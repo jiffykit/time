@@ -211,11 +211,11 @@
         <div class="control-group">
             <h3>Rotation (°)</h3>
             <div class="slider-label"><span>X</span><span id="rotXValue">0°</span></div>
-            <input id="rotXSlider" type="range" min="0" max="360" value="0" step="1">
+            <input id="rotXSlider" type="range" min="0" max="1080" value="0" step="1">
             <div class="slider-label"><span>Y</span><span id="rotYValue">0°</span></div>
-            <input id="rotYSlider" type="range" min="0" max="360" value="0" step="1">
+            <input id="rotYSlider" type="range" min="0" max="1080" value="0" step="1">
             <div class="slider-label"><span>Z</span><span id="rotZValue">0°</span></div>
-            <input id="rotZSlider" type="range" min="0" max="360" value="0" step="1">
+            <input id="rotZSlider" type="range" min="0" max="1080" value="0" step="1">
         </div>
         <div class="control-group">
             <h3>Cube Sizes</h3>
@@ -471,30 +471,48 @@
                 return p;
             }
 
-            // Helper function to adjust color brightness based on depth with glass/glow effect
+            // Simplified lighting system - just depth-based brightness with subtle glow
             function adjustColorForDepth(color, z) {
                 // Normalize z to a reasonable range (-400 to 400)
                 const normalizedZ = Math.max(-400, Math.min(400, z));
-                // Map z to brightness factor (closer = lighter, farther = darker)
-                const brightnessFactor = 1 + (normalizedZ / 400) * 0.4; // ±40% for more dramatic effect
-                const clampedFactor = Math.max(0.6, Math.min(1.4, brightnessFactor));
 
-                // Parse rgba color and adjust brightness
+                // Simple brightness factor based on depth (closer = brighter, farther = darker)
+                const brightnessFactor = 1 + (normalizedZ / 400) * 0.6; // ±60% brightness variation
+                const clampedFactor = Math.max(0.4, Math.min(1.6, brightnessFactor));
+
+                // Parse rgba color and adjust only brightness (no color temperature changes)
                 const match = color.match(/rgba?\((\d+),(\d+),(\d+),?([^)]*)\)/);
                 if (match) {
                     const r = Math.min(255, Math.max(0, Math.round(parseInt(match[1]) * clampedFactor)));
                     const g = Math.min(255, Math.max(0, Math.round(parseInt(match[2]) * clampedFactor)));
                     const b = Math.min(255, Math.max(0, Math.round(parseInt(match[3]) * clampedFactor)));
-                    const a = match[4] ? match[4] : '0.7'; // Make slightly more transparent for glass effect
-                    return `rgba(${r},${g},${b},${a})`;
+                    const baseAlpha = match[4] ? parseFloat(match[4]) : 0.3;
+
+                    return `rgba(${r},${g},${b},${baseAlpha})`;
                 }
                 return color;
+            }
+
+            // Simple glow effect function
+            function createSimpleGlow(ctx, color, z, intensity = 1.0) {
+                const normalizedZ = Math.max(-400, Math.min(400, z));
+                const glowIntensity = Math.max(0.5, Math.min(1.0, (normalizedZ + 400) / 800)) * intensity;
+
+                // Simple glow
+                const glowBlur = Math.round(8 * glowIntensity);
+
+                ctx.shadowColor = color.replace(/,[\d.]+\)$/, ',0.6)');
+                ctx.shadowBlur = glowBlur;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+
+                return glowIntensity;
             }
 
             // Draw axis labels and time indicators
             function drawAxisLabels() {
                 if (!labelsToggle.checked) return;
-                
+
                 const t = params.time / 100;
                 ctx.save();
                 ctx.font = '14px sans-serif';
@@ -527,9 +545,9 @@
 
                 // Define axis directions based on cube edges - label ALL edges of each type
                 const axisLabels = [
-                    { label: 'LEFT-RIGHT', edges: [[0,1], [3,2], [4,5], [7,6]], color: '#ff6666' },
-                    { label: 'DOWN-UP', edges: [[0,3], [1,2], [4,7], [5,6]], color: '#66ff66' },
-                    { label: 'BACK-FRONT', edges: [[0,4], [1,5], [2,6], [3,7]], color: '#6666ff' }
+                    { label: 'LEFT-RIGHT', edges: [[0, 1], [3, 2], [4, 5], [7, 6]], color: '#ff6666' },
+                    { label: 'DOWN-UP', edges: [[0, 3], [1, 2], [4, 7], [5, 6]], color: '#66ff66' },
+                    { label: 'BACK-FRONT', edges: [[0, 4], [1, 5], [2, 6], [3, 7]], color: '#6666ff' }
                 ];
 
                 // Draw axis labels on ALL edges of each type
@@ -540,41 +558,41 @@
                         const z1 = presentCube[edge[0]].z;
                         const z2 = presentCube[edge[1]].z;
                         const avgZ = (z1 + z2) / 2;
-                        
+
                         // Only label edges that are reasonably visible (not too far back)
                         if (avgZ > -200) {
                             // Position label at the midpoint of the edge
                             const midX = (p1.x + p2.x) / 2;
                             const midY = (p1.y + p2.y) / 2;
-                            
+
                             // Calculate edge direction
                             const edgeX = p2.x - p1.x;
                             const edgeY = p2.y - p1.y;
                             const edgeLength = Math.sqrt(edgeX * edgeX + edgeY * edgeY);
-                            
+
                             if (edgeLength > 10) { // Only label edges that are visible enough
                                 // Calculate perpendicular direction (outward from cube center)
                                 const toCenterX = centerX - midX;
                                 const toCenterY = centerY - midY;
                                 const toCenterLength = Math.sqrt(toCenterX * toCenterX + toCenterY * toCenterY);
-                                
+
                                 if (toCenterLength > 0) {
                                     const outwardX = -toCenterX / toCenterLength;
                                     const outwardY = -toCenterY / toCenterLength;
-                                    
+
                                     // Position label outside the edge
                                     const labelX = midX + outwardX * 20;
                                     const labelY = midY + outwardY * 20;
-                                    
+
                                     // Fade based on depth and visibility
                                     const opacity = Math.max(0.3, Math.min(1.0, (avgZ + 400) / 800));
-                                    
+
                                     ctx.save();
                                     ctx.fillStyle = axis.color;
                                     ctx.globalAlpha = opacity;
                                     ctx.font = '10px sans-serif';
                                     ctx.fillText(axis.label, labelX, labelY);
-                                    
+
                                     // Draw small line from edge to label
                                     ctx.strokeStyle = axis.color;
                                     ctx.lineWidth = 1;
@@ -593,48 +611,48 @@
 
                 // Draw TIME labels along ALL 8 paths - repeated text running through center
                 ctx.font = '9px sans-serif';
-                
+
                 for (let i = 0; i < 8; i++) {
                     // Calculate visibility of this path
                     let pathStartPoint = getVertexPath3D(i, 0.5);
                     pathStartPoint = transformPoint(pathStartPoint, 0.5);
                     const pathVisibility = Math.max(0.2, Math.min(1.0, (pathStartPoint.z + 400) / 800));
-                    
+
                     // Create repeated TIME text that spans the entire path
                     const repeatCount = 8; // Number of "TIME" repetitions
                     const fullText = 'TIME '.repeat(repeatCount).trim();
-                    
+
                     // Distribute letters evenly across the central 70% of the path
                     const startT = 0.15;
                     const endT = 0.85;
                     const pathLength = endT - startT;
-                    
+
                     for (let j = 0; j < fullText.length; j++) {
                         if (fullText[j] === ' ') continue; // Skip spaces
-                        
+
                         const letterT = startT + (j / (fullText.length - 1)) * pathLength;
-                        
+
                         let p = getVertexPath3D(i, letterT);
                         p = transformPoint(p, letterT);
                         const projected = project(p);
-                        
+
                         // Calculate path direction for letter rotation
                         const deltaT = 0.01;
                         let p1 = getVertexPath3D(i, Math.max(0, letterT - deltaT));
                         p1 = transformPoint(p1, Math.max(0, letterT - deltaT));
                         const proj1 = project(p1);
-                        
+
                         let p2 = getVertexPath3D(i, Math.min(1, letterT + deltaT));
                         p2 = transformPoint(p2, Math.min(1, letterT + deltaT));
                         const proj2 = project(p2);
-                        
+
                         let angle = Math.atan2(proj2.y - proj1.y, proj2.x - proj1.x);
-                        
+
                         // Keep text readable - flip if upside down
                         if (Math.abs(angle) > Math.PI / 2) {
                             angle += Math.PI;
                         }
-                        
+
                         ctx.save();
                         ctx.translate(projected.x, projected.y);
                         ctx.rotate(angle);
@@ -643,7 +661,7 @@
                         ctx.restore();
                     }
                 }
-                
+
                 ctx.restore();
             }
 
@@ -702,8 +720,20 @@
                     face.forEach(v => avgZ += cube[v].z);
                     avgZ /= face.length;
 
-                    // Apply depth-based lighting
+                    // Apply simple depth-based lighting for minimap
                     const adjustedColor = adjustColorForDepth(faceColors[i], avgZ);
+
+                    // Simple glow effect for minimap
+                    mctx.save();
+
+                    const normalizedZ = Math.max(-400, Math.min(400, avgZ));
+                    const glowIntensity = Math.max(0.5, Math.min(1.0, (normalizedZ + 400) / 800));
+
+                    mctx.shadowColor = adjustedColor.replace(/,[\d.]+\)$/, ',0.5)');
+                    mctx.shadowBlur = Math.round(6 * glowIntensity);
+                    mctx.shadowOffsetX = 0;
+                    mctx.shadowOffsetY = 0;
+
                     mctx.fillStyle = adjustedColor;
                     mctx.beginPath();
                     face.forEach((v, j) => {
@@ -713,6 +743,8 @@
                     });
                     mctx.closePath();
                     mctx.fill();
+
+                    mctx.restore();
                 });
                 mctx.strokeStyle = '#ffff00';
                 mctx.lineWidth = 2;
@@ -762,26 +794,24 @@
                 cube = cube.map(p => rotateY(p, camRy));
                 cube = cube.map(p => rotateZ(p, camRz));
                 const projected = cube.map(project);
-                
+
                 ctx.save();
-                
-                // ALWAYS show faces for ghost cube
+
+                // ALWAYS show faces for ghost cube with simple depth gradient
                 faces.forEach((face, i) => {
                     // Calculate average z-depth for this face
                     let avgZ = 0;
                     face.forEach(v => avgZ += cube[v].z);
                     avgZ /= face.length;
 
-                    // Apply depth-based lighting with glow effect
+                    // Apply simple depth-based lighting
                     const adjustedColor = adjustColorForDepth(faceColors[i], avgZ);
-                    
-                    // Add glow effect for glass-like appearance
+
+                    // Simple glow effect
                     ctx.save();
-                    ctx.shadowColor = adjustedColor.replace(/,[\d.]+\)$/, ',0.6)');
-                    ctx.shadowBlur = 8 + (avgZ / 400) * 3;
-                    ctx.shadowOffsetX = 0;
-                    ctx.shadowOffsetY = 0;
-                    
+                    createSimpleGlow(ctx, adjustedColor, avgZ, 0.7);
+
+                    // Main face
                     ctx.fillStyle = adjustedColor;
                     ctx.beginPath();
                     face.forEach((v, j) => {
@@ -791,23 +821,7 @@
                     });
                     ctx.closePath();
                     ctx.fill();
-                    
-                    // Add glass highlight
-                    const highlightColor = adjustedColor.replace(/rgba?\((\d+),(\d+),(\d+)/, 'rgba(255,255,255').replace(/,[\d.]+\)$/, ',0.2)');
-                    ctx.shadowBlur = 0;
-                    ctx.fillStyle = highlightColor;
-                    ctx.beginPath();
-                    const topVertices = face.slice(0, 2);
-                    topVertices.forEach((v, j) => {
-                        const pt = projected[v];
-                        const offsetPt = { x: pt.x, y: pt.y - 1 };
-                        if (j === 0) ctx.moveTo(offsetPt.x, offsetPt.y);
-                        else ctx.lineTo(offsetPt.x, offsetPt.y);
-                    });
-                    ctx.lineTo(projected[face[1]].x, projected[face[1]].y);
-                    ctx.lineTo(projected[face[0]].x, projected[face[0]].y);
-                    ctx.closePath();
-                    ctx.fill();
+
                     ctx.restore();
                 });
 
@@ -841,10 +855,10 @@
                     z: p.z + params.translateZ
                 }));
                 const projected = cube.map(project);
-                
+
                 ctx.save();
 
-                // Only show faces when controlToggle is unchecked (Hide big cube Faces)
+                // Only show faces when controlToggle is unchecked with simple depth gradient
                 if (!controlToggle.checked) {
                     faces.forEach((face, i) => {
                         // Calculate average z-depth for this face
@@ -852,16 +866,14 @@
                         face.forEach(v => avgZ += cube[v].z);
                         avgZ /= face.length;
 
-                        // Apply depth-based lighting with glow effect
+                        // Apply simple depth-based lighting
                         const adjustedColor = adjustColorForDepth(faceColors[i], avgZ);
-                        
-                        // Add glow effect for glass-like appearance
+
+                        // Simple glow effect
                         ctx.save();
-                        ctx.shadowColor = adjustedColor.replace(/,[\d.]+\)$/, ',0.8)');
-                        ctx.shadowBlur = 10 + (avgZ / 400) * 5;
-                        ctx.shadowOffsetX = 0;
-                        ctx.shadowOffsetY = 0;
-                        
+                        createSimpleGlow(ctx, adjustedColor, avgZ, 1.0);
+
+                        // Main face
                         ctx.fillStyle = adjustedColor;
                         ctx.beginPath();
                         face.forEach((v, j) => {
@@ -871,23 +883,7 @@
                         });
                         ctx.closePath();
                         ctx.fill();
-                        
-                        // Add glass highlight
-                        const highlightColor = adjustedColor.replace(/rgba?\((\d+),(\d+),(\d+)/, 'rgba(255,255,255').replace(/,[\d.]+\)$/, ',0.3)');
-                        ctx.shadowBlur = 0;
-                        ctx.fillStyle = highlightColor;
-                        ctx.beginPath();
-                        const topVertices = face.slice(0, 2);
-                        topVertices.forEach((v, j) => {
-                            const pt = projected[v];
-                            const offsetPt = { x: pt.x, y: pt.y - 2 };
-                            if (j === 0) ctx.moveTo(offsetPt.x, offsetPt.y);
-                            else ctx.lineTo(offsetPt.x, offsetPt.y);
-                        });
-                        ctx.lineTo(projected[face[1]].x, projected[face[1]].y);
-                        ctx.lineTo(projected[face[0]].x, projected[face[0]].y);
-                        ctx.closePath();
-                        ctx.fill();
+
                         ctx.restore();
                     });
                 }
@@ -916,24 +912,22 @@
                 }
                 const projected = cube.map(project);
                 ctx.save();
-                
-                // ALWAYS show faces for animated cube (independent of checkbox)
+
+                // ALWAYS show faces for animated cube with simple depth gradient
                 faces.forEach((face, i) => {
                     // Calculate average z-depth for this face
                     let avgZ = 0;
                     face.forEach(v => avgZ += cube[v].z);
                     avgZ /= face.length;
 
-                    // Apply depth-based lighting with glow effect
+                    // Apply simple depth-based lighting
                     const adjustedColor = adjustColorForDepth(faceColors[i], avgZ);
-                    
-                    // Add glow effect for glass-like appearance
+
+                    // Simple glow effect (slightly stronger for animated cube)
                     ctx.save();
-                    ctx.shadowColor = adjustedColor.replace(/,[\d.]+\)$/, ',0.8)'); // Glow color
-                    ctx.shadowBlur = 12 + (avgZ / 400) * 6; // Stronger glow for animated cube
-                    ctx.shadowOffsetX = 0;
-                    ctx.shadowOffsetY = 0;
-                    
+                    createSimpleGlow(ctx, adjustedColor, avgZ, 1.2);
+
+                    // Main face
                     ctx.fillStyle = adjustedColor;
                     ctx.beginPath();
                     face.forEach((v, j) => {
@@ -943,26 +937,10 @@
                     });
                     ctx.closePath();
                     ctx.fill();
-                    
-                    // Add glass highlight
-                    const highlightColor = adjustedColor.replace(/rgba?\((\d+),(\d+),(\d+)/, 'rgba(255,255,255').replace(/,[\d.]+\)$/, ',0.4)');
-                    ctx.shadowBlur = 0;
-                    ctx.fillStyle = highlightColor;
-                    ctx.beginPath();
-                    const topVertices = face.slice(0, 2);
-                    topVertices.forEach((v, j) => {
-                        const pt = projected[v];
-                        const offsetPt = { x: pt.x, y: pt.y - 3 }; // Larger offset for animated cube
-                        if (j === 0) ctx.moveTo(offsetPt.x, offsetPt.y);
-                        else ctx.lineTo(offsetPt.x, offsetPt.y);
-                    });
-                    ctx.lineTo(projected[face[1]].x, projected[face[1]].y);
-                    ctx.lineTo(projected[face[0]].x, projected[face[0]].y);
-                    ctx.closePath();
-                    ctx.fill();
+
                     ctx.restore();
                 });
-                
+
                 ctx.strokeStyle = '#ffff00';
                 ctx.lineWidth = 2;
                 const edges = [
