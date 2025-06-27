@@ -1,667 +1,1225 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Hypercube Time Visualization</title>
-  <style>
-    body { margin:0; padding:0; background:#0a0a0a; overflow:hidden; color:#fff; font-family:sans-serif; }
-    .canvas-container { position:absolute; inset:0; cursor: crosshair; }
-    canvas { display:block; }
-    .controls { position:fixed; top:10px; right:10px; width:340px; background:rgba(0,0,0,0.8); padding:12px; border-radius:8px; }
-    .control-group { margin-bottom:12px; }
-    .control-group h3 { margin:4px 0; font-size:14px; color:#0ff; }
-    .slider-label { display:flex; justify-content:space-between; font-size:12px; }
-    input[type=range], input[type=checkbox] { width:100%; margin-top:4px; }
-    #animateBtn { width:100%; padding:8px; margin-bottom:12px; background:#005500; color:#fff; border:none; border-radius:4px; cursor:pointer; }
-    #resetBtn { width:100%; padding:8px; margin-bottom:12px; background:#550000; color:#fff; border:none; border-radius:4px; cursor:pointer; }
-    #miniLabel { position:fixed; bottom:460px; left:10px; font-size:14px; }
-    #miniCanvas { position:fixed; bottom:30px; left:10px; background:#111; border:1px solid #444; width:420px; height:420px; }
-    #ticker { position:fixed; bottom:0; width:100%; background:rgba(20,20,20,0.9); overflow:hidden; height:48px; }
-    #ticker .text { display:inline-block; white-space:nowrap; padding-left:100%; animation:scroll 120s linear infinite; font-size:18px; line-height:48px; }
-    @keyframes scroll { 0% { transform:translateX(0); } 100% { transform:translateX(-100%); } }
-    .info { position:fixed; top:10px; left:10px; background:rgba(0,0,0,0.8); padding:8px; border-radius:4px; font-size:12px; max-width:200px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Hypercube Time Visualization</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0a0a0a;
+            overflow: hidden;
+            color: #fff;
+            font-family: sans-serif;
+        }
+
+        .canvas-container {
+            position: absolute;
+            inset: 0;
+            cursor: crosshair;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        .controls {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 340px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .control-group {
+            margin-bottom: 12px;
+        }
+
+        .control-group h3 {
+            margin: 4px 0;
+            font-size: 14px;
+            color: #0ff;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+        }
+
+        input[type=range],
+        input[type=checkbox] {
+            width: 100%;
+            margin-top: 4px;
+        }
+
+        #animateBtn {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 12px;
+            background: #005500;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #resetBtn {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 12px;
+            background: #550000;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #miniLabel {
+            position: fixed;
+            bottom: 460px;
+            left: 10px;
+            font-size: 14px;
+        }
+
+        #miniCanvasContainer {
+            position: fixed;
+            bottom: 30px;
+            left: 10px;
+            width: 420px;
+            height: 420px;
+            border: 1px solid #444;
+            background: #111;
+            resize: both;
+            overflow: hidden;
+            min-width: 200px;
+            min-height: 200px;
+            max-width: 800px;
+            max-height: 800px;
+            cursor: default;
+        }
+
+        #miniCanvas {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            cursor: default;
+        }
+
+        #resizeHandle {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 15px;
+            height: 15px;
+            background: #666;
+            cursor: nw-resize;
+            border-left: 1px solid #888;
+            border-bottom: 1px solid #888;
+        }
+
+        #resizeHandle:hover {
+            background: #888;
+        }
+
+        #ticker {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background: rgba(20, 20, 20, 0.9);
+            overflow: hidden;
+            height: 48px;
+        }
+
+        #ticker .text {
+            display: inline-block;
+            white-space: nowrap;
+            padding-left: 100%;
+            animation: scroll 120s linear infinite;
+            font-size: 18px;
+            line-height: 48px;
+        }
+
+        @keyframes scroll {
+            0% {
+                transform: translateX(0);
+            }
+
+            100% {
+                transform: translateX(-100%);
+            }
+        }
+
+        .info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            max-width: 200px;
+        }
+
+        #paypalHeart {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            font-size: 16px;
+            text-decoration: none;
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+        }
+
+        #paypalHeart:hover {
+            opacity: 1;
+        }
+    </style>
 </head>
+
 <body>
-  <div class="canvas-container"><canvas id="canvas"></canvas></div>
-  <div class="info">
-    <div>Click any path to add control points (exactly where you click)</div>
-    <div>Drag any control point (moves all, keeps cube)</div>
-    <div>Mini-cube is always a cube, never deformed</div>
-    <div>Space: Play/Pause</div>
-  </div>
-  <div class="controls">
-    <button id="animateBtn">Play</button>
-    <button id="resetBtn">Reset Curves</button>
-    <div class="control-group"><label><input type="checkbox" id="pathToggle" checked> Show Paths</label></div>
-    <div class="control-group"><label><input type="checkbox" id="controlToggle" checked> Show Control Points</label></div>
-    <div class="control-group">
-      <h3>Time Progress</h3>
-      <div class="slider-label"><span>Time</span><span id="timeValue">5.0s</span></div>
-      <input id="timeSlider" type="range" min="0" max="100" value="50" step="1">
+    <div class="canvas-container"><canvas id="canvas"></canvas></div>
+    <div class="info">
+        <div>Click any path to add control points (exactly where you click)</div>
+        <div>Drag any control point (moves all, keeps cube)</div>
+        <div>Mini-cube is always a cube, never deformed</div>
+        <div>Space: Play/Pause</div>
     </div>
-    <div class="control-group">
-      <h3>Speed</h3>
-      <div class="slider-label"><span>Speed</span><span id="speedValue">1.0</span></div>
-      <input id="speedSlider" type="range" min="0.1" max="3" step="0.1" value="1">
+    <div class="controls">
+        <button id="animateBtn">Play</button>
+        <button id="resetBtn">Reset Curves</button>
+        <div class="control-group"><label><input type="checkbox" id="pathToggle" checked> Show Paths</label></div>
+        <div class="control-group"><label><input type="checkbox" id="controlToggle"> Hide big cube Faces</label>
+        </div>
+        <div class="control-group"><label><input type="checkbox" id="labelsToggle" checked> Show Axis Labels</label>
+        </div>
+        <div class="control-group">
+            <h3>Time Progress</h3>
+            <div class="slider-label"><span>Time</span><span id="timeValue">5.0s</span></div>
+            <input id="timeSlider" type="range" min="0" max="100" value="50" step="1">
+        </div>
+        <div class="control-group">
+            <h3>Speed</h3>
+            <div class="slider-label"><span>Speed</span><span id="speedValue">1.0</span></div>
+            <input id="speedSlider" type="range" min="0.1" max="3" step="0.1" value="1">
+        </div>
+        <div class="control-group">
+            <h3>Rotation (°)</h3>
+            <div class="slider-label"><span>X</span><span id="rotXValue">0°</span></div>
+            <input id="rotXSlider" type="range" min="0" max="360" value="0" step="1">
+            <div class="slider-label"><span>Y</span><span id="rotYValue">0°</span></div>
+            <input id="rotYSlider" type="range" min="0" max="360" value="0" step="1">
+            <div class="slider-label"><span>Z</span><span id="rotZValue">0°</span></div>
+            <input id="rotZSlider" type="range" min="0" max="360" value="0" step="1">
+        </div>
+        <div class="control-group">
+            <h3>Cube Sizes</h3>
+            <div class="slider-label"><span>Small Cube</span><span id="pastSizeValue">30</span></div>
+            <input id="pastSizeSlider" type="range" min="10" max="100" value="30">
+            <div class="slider-label"><span>Large Cube</span><span id="presentSizeValue">400</span></div>
+            <input id="presentSizeSlider" type="range" min="30" max="500" value="400">
+        </div>
+        <div class="control-group">
+            <h3>Translation</h3>
+            <div class="slider-label"><span>X</span><span id="translateXValue">0</span></div>
+            <input id="translateXSlider" type="range" min="-500" max="500" value="0">
+            <div class="slider-label"><span>Y</span><span id="translateYValue">0</span></div>
+            <input id="translateYSlider" type="range" min="-500" max="500" value="0">
+            <div class="slider-label"><span>Z</span><span id="translateZValue">0</span></div>
+            <input id="translateZSlider" type="range" min="-500" max="500" value="0">
+        </div>
     </div>
-    <div class="control-group">
-      <h3>Rotation (°)</h3>
-      <div class="slider-label"><span>X</span><span id="rotXValue">0°</span></div>
-      <input id="rotXSlider" type="range" min="0" max="360" value="0" step="1">
-      <div class="slider-label"><span>Y</span><span id="rotYValue">0°</span></div>
-      <input id="rotYSlider" type="range" min="0" max="360" value="0" step="1">
-      <div class="slider-label"><span>Z</span><span id="rotZValue">0°</span></div>
-      <input id="rotZSlider" type="range" min="0" max="360" value="0" step="1">
+
+    <div id="miniLabel">Actual Cube (Always Cube!)</div>
+    <div id="miniCanvasContainer">
+        <canvas id="miniCanvas"></canvas>
+        <div id="resizeHandle"></div>
     </div>
-    <div class="control-group">
-      <h3>Cube Sizes</h3>
-      <div class="slider-label"><span>Small Cube</span><span id="pastSizeValue">30</span></div>
-      <input id="pastSizeSlider" type="range" min="10" max="100" value="30">
-      <div class="slider-label"><span>Large Cube</span><span id="presentSizeValue">400</span></div>
-      <input id="presentSizeSlider" type="range" min="30" max="500" value="400">
+    <div id="ticker">
+        <div class="text">Click any path to add bezier control points exactly at that spot; all 8 cube vertices' points
+            stay synchronized as a perfect hypercube. Drag any control point to reshape — all will follow to preserve
+            cubic geometry. The minimap cube never deforms, no matter what.</div>
     </div>
-    <div class="control-group">
-      <h3>Translation</h3>
-      <div class="slider-label"><span>X</span><span id="translateXValue">0</span></div>
-      <input id="translateXSlider" type="range" min="-500" max="500" value="0">
-      <div class="slider-label"><span>Y</span><span id="translateYValue">0</span></div>
-      <input id="translateYSlider" type="range" min="-500" max="500" value="0">
-      <div class="slider-label"><span>Z</span><span id="translateZValue">0</span></div>
-      <input id="translateZSlider" type="range" min="-500" max="500" value="0">
-    </div>
-  </div>
-  <div id="miniLabel">Actual Cube (Always Cube!)</div>
-  <canvas id="miniCanvas" width="420" height="420"></canvas>
-  <div id="ticker"><div class="text">Click any path to add bezier control points exactly at that spot; all 8 cube vertices' points stay synchronized as a perfect hypercube. Drag any control point to reshape — all will follow to preserve cubic geometry. The minimap cube never deforms, no matter what.</div></div>
-  <script>
-    window.addEventListener('DOMContentLoaded', () => {
-      // ----------- Vars -----------
-      const canvas = document.getElementById('canvas');
-      const ctx = canvas.getContext('2d');
-      const mini = document.getElementById('miniCanvas');
-      const mctx = mini.getContext('2d');
-      const pathToggle = document.getElementById('pathToggle');
-      const controlToggle = document.getElementById('controlToggle');
-      const animBtn = document.getElementById('animateBtn');
-      const resetBtn = document.getElementById('resetBtn');
-      let autoPlay = false;
-      let isDragging = false;
-      let dragVertex = -1;
-      let dragControlIndex = -1;
-      let dragOffset = {x:0, y:0};
-      const dpr = window.devicePixelRatio || 1;
+    <a id="paypalHeart" href="https://paypal.me/jamesmulvale" target="_blank" title="Support the creator">💖</a>
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            // ----------- Vars -----------
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const mini = document.getElementById('miniCanvas');
+            const mctx = mini.getContext('2d');
+            const miniContainer = document.getElementById('miniCanvasContainer');
+            const resizeHandle = document.getElementById('resizeHandle');
+            const pathToggle = document.getElementById('pathToggle');
+            const controlToggle = document.getElementById('controlToggle');
+            const labelsToggle = document.getElementById('labelsToggle');
+            const animBtn = document.getElementById('animateBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            let autoPlay = false;
+            let isDragging = false;
+            let dragVertex = -1;
+            let dragControlIndex = -1;
+            let dragOffset = { x: 0, y: 0 };
+            let isResizing = false;
+            let resizeStartPos = { x: 0, y: 0 };
+            let resizeStartSize = { width: 0, height: 0 };
+            const dpr = window.devicePixelRatio || 1;
 
-      const params = { 
-        time: 50, speed: 1, rotX: 0, rotY: 0, rotZ: 0, 
-        pastSize: 30, presentSize: 400, 
-        translateX: 0, translateY: 0, translateZ: 0 
-      };
+            const params = {
+                time: 50, speed: 1, rotX: 0, rotY: 0, rotZ: 0,
+                pastSize: 30, presentSize: 400,
+                translateX: 0, translateY: 0, translateZ: 0
+            };
 
-      const faces = [
-        [0,1,2,3],[4,5,6,7],[0,1,5,4],[3,2,6,7],[1,2,6,5],[0,3,7,4]
-      ];
-      const faceColors = [
-        'rgba(255,255,0,0.4)','rgba(255,255,0,0.4)',
-        'rgba(255,0,255,0.4)','rgba(255,0,255,0.4)',
-        'rgba(0,255,255,0.4)','rgba(0,255,255,0.4)'
-      ];
-      let controlPoints = Array(8).fill(null).map(() => []);
-      const camRx = 30 * Math.PI/180;
-      const camRy = 30 * Math.PI/180;
-      const camRz = 0;
+            const faces = [
+                [0, 1, 2, 3], [4, 5, 6, 7], [0, 1, 5, 4], [3, 2, 6, 7], [1, 2, 6, 5], [0, 3, 7, 4]
+            ];
+            const faceColors = [
+                'rgba(255,255,0,0.3)', 'rgba(255,255,0,0.3)',
+                'rgba(255,0,255,0.3)', 'rgba(255,0,255,0.3)',
+                'rgba(0,255,255,0.3)', 'rgba(0,255,255,0.3)'
+            ];
+            let controlPoints = Array(8).fill(null).map(() => []);
+            const camRx = 30 * Math.PI / 180;
+            const camRy = 30 * Math.PI / 180;
+            const camRz = 0;
 
-      function resizeCanvas() {
-        canvas.width = window.innerWidth * dpr;
-        canvas.height = window.innerHeight * dpr;
-        canvas.style.width = window.innerWidth + 'px';
-        canvas.style.height = window.innerHeight + 'px';
-        ctx.setTransform(1,0,0,1,0,0);
-        ctx.scale(dpr, dpr);
+            function resizeCanvas() {
+                canvas.width = window.innerWidth * dpr;
+                canvas.height = window.innerHeight * dpr;
+                canvas.style.width = window.innerWidth + 'px';
+                canvas.style.height = window.innerHeight + 'px';
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.scale(dpr, dpr);
 
-        mini.width = 420 * dpr;
-        mini.height = 420 * dpr;
-        mini.style.width = '420px';
-        mini.style.height = '420px';
-        mctx.setTransform(1,0,0,1,0,0);
-        mctx.scale(dpr, dpr);
-      }
-      resizeCanvas();
-      window.addEventListener('resize', resizeCanvas);
+                resizeMiniCanvas();
+            }
 
-      ['time','speed','rotX','rotY','rotZ','pastSize','presentSize','translateX','translateY','translateZ'].forEach(name => {
-        const slider = document.getElementById(name + 'Slider');
-        const display = document.getElementById(name + 'Value');
-        slider.value = params[name];
-        display.textContent = name === 'time' ? (params[name]/10).toFixed(1) + 's' : 
-                             name.includes('rot') ? params[name] + '°' : 
-                             Math.round(params[name]);
-        slider.addEventListener('input', () => {
-          params[name] = parseFloat(slider.value);
-          display.textContent = name === 'time' ? (params[name]/10).toFixed(1) + 's' : 
-                               name.includes('rot') ? params[name] + '°' : 
-                               Math.round(params[name]);
-          render();
-        });
-      });
-      animBtn.addEventListener('click', () => {
-        autoPlay = !autoPlay;
-        animBtn.textContent = autoPlay ? 'Pause' : 'Play';
-      });
-      resetBtn.addEventListener('click', () => {
-        controlPoints = Array(8).fill(null).map(() => []);
-        render();
-      });
+            function resizeMiniCanvas() {
+                const containerRect = miniContainer.getBoundingClientRect();
+                const width = Math.floor(containerRect.width);
+                const height = Math.floor(containerRect.height);
 
-      // 3D math
-      function rotateX(p, angle) {
-        const c = Math.cos(angle);
-        const s = Math.sin(angle);
-        return { x: p.x, y: p.y * c - p.z * s, z: p.y * s + p.z * c };
-      }
-      function rotateY(p, angle) {
-        const c = Math.cos(angle);
-        const s = Math.sin(angle);
-        return { x: p.x * c + p.z * s, y: p.y, z: -p.x * s + p.z * c };
-      }
-      function rotateZ(p, angle) {
-        const c = Math.cos(angle);
-        const s = Math.sin(angle);
-        return { x: p.x * c - p.y * s, y: p.x * s + p.y * c, z: p.z };
-      }
-      function project(p) {
-        const dist = 800;
-        const scale = dist / (dist + p.z);
-        return {
-          x: (canvas.width/dpr) / 2 + p.x * scale,
-          y: (canvas.height/dpr) / 2 + p.y * scale
-        };
-      }
-      function createCube(size) {
-        const h = size / 2;
-        return [
-          {x: -h, y: -h, z: -h}, {x: h, y: -h, z: -h},
-          {x: h, y: h, z: -h}, {x: -h, y: h, z: -h},
-          {x: -h, y: -h, z: h}, {x: h, y: -h, z: h},
-          {x: h, y: h, z: h}, {x: -h, y: h, z: h}
-        ];
-      }
-      function bezierPoint(points, t) {
-        if (points.length === 1) return points[0];
-        const newPoints = [];
-        for (let i = 0; i < points.length - 1; i++) {
-          newPoints.push({
-            x: points[i].x + (points[i + 1].x - points[i].x) * t,
-            y: points[i].y + (points[i + 1].y - points[i].y) * t,
-            z: points[i].z + (points[i + 1].z - points[i].z) * t
-          });
-        }
-        return bezierPoint(newPoints, t);
-      }
-      function getVertexPath3D(vertexIndex, t) {
-        const startCube = createCube(params.pastSize);
-        const endCube = createCube(params.presentSize);
-        const start = startCube[vertexIndex];
-        const end = endCube[vertexIndex];
-        let ctrlPts = controlPoints[vertexIndex];
-        if (ctrlPts.length === 0) {
-          return {
-            x: start.x + (end.x - start.x) * t,
-            y: start.y + (end.y - start.y) * t,
-            z: start.z + (end.z - start.z) * t
-          };
-        }
-        const points = [start, ...ctrlPts, end];
-        return bezierPoint(points, t);
-      }
-      function transformPoint(p, t) {
-        p = rotateX(p, params.rotX * t * Math.PI/180);
-        p = rotateY(p, params.rotY * t * Math.PI/180);
-        p = rotateZ(p, params.rotZ * t * Math.PI/180);
-        p = rotateX(p, camRx);
-        p = rotateY(p, camRy);
-        p = rotateZ(p, camRz);
-        p.x += params.translateX * t;
-        p.y += params.translateY * t;
-        p.z += params.translateZ * t;
-        return p;
-      }
+                mini.width = width * dpr;
+                mini.height = height * dpr;
+                mini.style.width = width + 'px';
+                mini.style.height = height + 'px';
+                mctx.setTransform(1, 0, 0, 1, 0, 0);
+                mctx.scale(dpr, dpr);
 
-      // --- Mini-cube always a cube, always rigid! ---
-      function drawMinimap() {
-        // Only ever a perfect cube. All animation is rigid: follows center of bezier path but no scaling/deformation.
-        const t = params.time / 100;
-        const dist = 800;
-        const center = 210;
-        mctx.fillStyle = '#111';
-        mctx.fillRect(0, 0, 420, 420);
+                // Re-render after resize
+                render();
+            }
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
 
-        // Calculate the center position in original space, then transform it properly
-        let cubeCenter = {x: 0, y: 0, z: 0};
-        
-        // Get the center of the bezier paths in original coordinate space (before transformations)
-        for (let i = 0; i < 8; i++) {
-          let vertexPath = getVertexPath3D(i, t);
-          cubeCenter.x += vertexPath.x;
-          cubeCenter.y += vertexPath.y;
-          cubeCenter.z += vertexPath.z;
-        }
-        cubeCenter.x /= 8;
-        cubeCenter.y /= 8;
-        cubeCenter.z /= 8;
-
-        // Now transform the center using only the object transformations (not camera)
-        let transformedCenter = {...cubeCenter};
-        transformedCenter = rotateX(transformedCenter, params.rotX * t * Math.PI/180);
-        transformedCenter = rotateY(transformedCenter, params.rotY * t * Math.PI/180);
-        transformedCenter = rotateZ(transformedCenter, params.rotZ * t * Math.PI/180);
-        transformedCenter.x += params.translateX * t;
-        transformedCenter.y += params.translateY * t;
-        transformedCenter.z += params.translateZ * t;
-
-        // Create small cube and position it at the transformed center
-        let cube = createCube(params.pastSize);
-        for (let i = 0; i < cube.length; i++) {
-          let p = {...cube[i]};
-          // Apply camera rotation to the small cube
-          p = rotateX(p, camRx);
-          p = rotateY(p, camRy);
-          p = rotateZ(p, camRz);
-          // Move cube center to match the transformed center
-          p.x += transformedCenter.x;
-          p.y += transformedCenter.y;
-          p.z += transformedCenter.z;
-          cube[i] = p;
-        }
-        const projected = cube.map(v => {
-          const scale = dist / (dist + v.z);
-          return { x: center + v.x * scale, y: center + v.y * scale };
-        });
-        mctx.save();
-        faces.forEach((face, i) => {
-          mctx.fillStyle = faceColors[i];
-          mctx.beginPath();
-          face.forEach((v, j) => {
-            const pt = projected[v];
-            if (j === 0) mctx.moveTo(pt.x, pt.y);
-            else mctx.lineTo(pt.x, pt.y);
-          });
-          mctx.closePath();
-          mctx.fill();
-        });
-        mctx.strokeStyle = '#ffff00';
-        mctx.lineWidth = 2;
-        const edges = [
-          [0,1],[1,2],[2,3],[3,0],
-          [4,5],[5,6],[6,7],[7,4],
-          [0,4],[1,5],[2,6],[3,7]
-        ];
-        edges.forEach(([a, b]) => {
-          mctx.beginPath();
-          mctx.moveTo(projected[a].x, projected[a].y);
-          mctx.lineTo(projected[b].x, projected[b].y);
-          mctx.stroke();
-        });
-        mctx.restore();
-      }
-
-      function drawPaths() {
-        if (!pathToggle.checked) return;
-        const segments = 100;
-        ctx.save();
-        ctx.globalAlpha = 0.6;
-        ctx.lineWidth = 1;
-        for (let i = 0; i < 8; i++) {
-          ctx.beginPath();
-          ctx.strokeStyle = '#888';
-          for (let j = 0; j <= segments; j++) {
-            const t = j / segments;
-            let p = getVertexPath3D(i, t);
-            p = transformPoint(p, t);
-            const projected = project(p);
-            if (j === 0) ctx.moveTo(projected.x, projected.y);
-            else ctx.lineTo(projected.x, projected.y);
-          }
-          ctx.stroke();
-        }
-        ctx.restore();
-      }
-      function drawControlPoints() {
-        if (!controlToggle.checked) return;
-        ctx.save();
-        for (let i = 0; i < 8; i++) {
-          for (let j = 0; j < controlPoints[i].length; j++) {
-            const t = (j + 1) / (controlPoints[i].length + 1);
-            let p = {...controlPoints[i][j]};
-            p = transformPoint(p, t);
-            const projected = project(p);
-            ctx.beginPath();
-            ctx.arc(projected.x, projected.y, 8, 0, Math.PI * 2);
-            ctx.fillStyle = (i === 0) ? '#ff4444' : '#ff8888';
-            ctx.fill();
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-          }
-        }
-        ctx.restore();
-      }
-      function drawStaticCubes() {
-        // Past (cyan), Present (magenta)
-        const cubes = [
-          { color: '#00ffff', size: params.pastSize, animate: false },
-          { color: '#ff00ff', size: params.presentSize, animate: true }
-        ];
-        cubes.forEach(({ color, size, animate }) => {
-          let cube = createCube(size);
-          if (animate) {
-            cube = cube.map(p => rotateX(p, params.rotX * Math.PI/180));
-            cube = cube.map(p => rotateY(p, params.rotY * Math.PI/180));
-            cube = cube.map(p => rotateZ(p, params.rotZ * Math.PI/180));
-          }
-          cube = cube.map(p => rotateX(p, camRx));
-          cube = cube.map(p => rotateY(p, camRy));
-          cube = cube.map(p => rotateZ(p, camRz));
-          if (animate) {
-            cube = cube.map(p => ({
-              x: p.x + params.translateX,
-              y: p.y + params.translateY,
-              z: p.z + params.translateZ
-            }));
-          }
-          const projected = cube.map(project);
-          ctx.save();
-          faces.forEach((face, i) => {
-            ctx.fillStyle = faceColors[i];
-            ctx.beginPath();
-            face.forEach((v, j) => {
-              const pt = projected[v];
-              if (j === 0) ctx.moveTo(pt.x, pt.y);
-              else ctx.lineTo(pt.x, pt.y);
+            // Mini canvas resize functionality
+            resizeHandle.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                isResizing = true;
+                resizeStartPos = { x: e.clientX, y: e.clientY };
+                const containerRect = miniContainer.getBoundingClientRect();
+                resizeStartSize = { width: containerRect.width, height: containerRect.height };
+                document.addEventListener('mousemove', handleResize);
+                document.addEventListener('mouseup', stopResize);
             });
-            ctx.closePath();
-            ctx.fill();
-          });
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 1.5;
-          const edges = [
-            [0,1],[1,2],[2,3],[3,0], [4,5],[5,6],[6,7],[7,4], [0,4],[1,5],[2,6],[3,7]
-          ];
-          edges.forEach(([a, b]) => {
-            ctx.beginPath();
-            ctx.moveTo(projected[a].x, projected[a].y);
-            ctx.lineTo(projected[b].x, projected[b].y);
-            ctx.stroke();
-          });
-          ctx.restore();
-        });
-      }
-      function drawAnimatedCube() {
-        const t = params.time / 100;
-        let cube = [];
-        for (let i = 0; i < 8; i++) {
-          let p = getVertexPath3D(i, t);
-          p = transformPoint(p, t);
-          cube.push(p);
-        }
-        const projected = cube.map(project);
-        ctx.save();
-        faces.forEach((face, i) => {
-          ctx.fillStyle = faceColors[i];
-          ctx.beginPath();
-          face.forEach((v, j) => {
-            const pt = projected[v];
-            if (j === 0) ctx.moveTo(pt.x, pt.y);
-            else ctx.lineTo(pt.x, pt.y);
-          });
-          ctx.closePath();
-          ctx.fill();
-        });
-        ctx.strokeStyle = '#ffff00';
-        ctx.lineWidth = 2;
-        const edges = [
-          [0,1],[1,2],[2,3],[3,0],
-          [4,5],[5,6],[6,7],[7,4],
-          [0,4],[1,5],[2,6],[3,7]
-        ];
-        edges.forEach(([a, b]) => {
-          ctx.beginPath();
-          ctx.moveTo(projected[a].x, projected[a].y);
-          ctx.lineTo(projected[b].x, projected[b].y);
-          ctx.stroke();
-        });
-        ctx.restore();
-      }
-      function render() {
-        ctx.clearRect(0, 0, canvas.width/dpr, canvas.height/dpr);
-        drawPaths();
-        drawStaticCubes();
-        drawAnimatedCube();
-        drawControlPoints();
-        drawMinimap();
-      }
 
-      // --- Mouse interaction: add/drag ---
-      function getMousePos(e) {
-        const rect = canvas.getBoundingClientRect();
-        return {
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top
-        };
-      }
-      function findNearestControl(mousePos) {
-        let nearest = null;
-        let minDist = 10000;
-        for (let vi = 0; vi < 8; vi++) {
-          for (let ci = 0; ci < controlPoints[vi].length; ci++) {
-            const t = (ci + 1) / (controlPoints[vi].length + 1);
-            let p = {...controlPoints[vi][ci]};
-            p = transformPoint(p, t);
-            const projected = project(p);
-            const dx = projected.x - mousePos.x;
-            const dy = projected.y - mousePos.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            if (dist < 15 && dist < minDist) {
-              minDist = dist;
-              nearest = { vertex: vi, index: ci, screen: projected, data: p };
+            function handleResize(e) {
+                if (!isResizing) return;
+
+                const deltaX = e.clientX - resizeStartPos.x;
+                const deltaY = e.clientY - resizeStartPos.y;
+
+                // For top-right handle: width increases with right movement, height increases with upward movement
+                let newWidth = Math.max(200, Math.min(800, resizeStartSize.width + deltaX));
+                let newHeight = Math.max(200, Math.min(800, resizeStartSize.height - deltaY));
+
+                miniContainer.style.width = newWidth + 'px';
+                miniContainer.style.height = newHeight + 'px';
+
+                resizeMiniCanvas();
             }
-          }
-        }
-        return nearest;
-      }
-      function findNearestPath(mousePos) {
-        const segments = 100;
-        let nearestDist = Infinity;
-        let nearestVertex = -1;
-        let nearestT = 0;
-        for (let i = 0; i < 8; i++) {
-          for (let j = 0; j <= segments; j++) {
-            const t = j / segments;
-            let p = getVertexPath3D(i, t);
-            p = transformPoint(p, t);
-            const projected = project(p);
-            const dist = Math.sqrt(
-              (projected.x - mousePos.x) ** 2 + 
-              (projected.y - mousePos.y) ** 2
-            );
-            if (dist < nearestDist && dist < 15) {
-              nearestDist = dist;
-              nearestVertex = i;
-              nearestT = t;
+
+            function stopResize() {
+                isResizing = false;
+                document.removeEventListener('mousemove', handleResize);
+                document.removeEventListener('mouseup', stopResize);
             }
-          }
-        }
-        return nearestVertex >= 0 ? { vertex: nearestVertex, t: nearestT } : null;
-      }
 
-      // Insert a new control point at correct t and position for all vertices
-      function addControlPointsToAll(clickedVertex, t, mousePos) {
-        // Step 1: Get the current cube state at time t (before adding control points)
-        let currentCube = [];
-        for (let i = 0; i < 8; i++) {
-          currentCube[i] = getVertexPath3D(i, t);
-        }
+            // ResizeObserver for better container resize handling
+            if (window.ResizeObserver) {
+                const resizeObserver = new ResizeObserver(() => {
+                    if (!isResizing) {
+                        resizeMiniCanvas();
+                    }
+                });
+                resizeObserver.observe(miniContainer);
+            }
 
-        // Step 2: Calculate current center
-        let currentCenter = {x: 0, y: 0, z: 0};
-        for (let i = 0; i < 8; i++) {
-          currentCenter.x += currentCube[i].x;
-          currentCenter.y += currentCube[i].y;
-          currentCenter.z += currentCube[i].z;
-        }
-        currentCenter.x /= 8;
-        currentCenter.y /= 8;
-        currentCenter.z /= 8;
+            ['time', 'speed', 'rotX', 'rotY', 'rotZ', 'pastSize', 'presentSize', 'translateX', 'translateY', 'translateZ'].forEach(name => {
+                const slider = document.getElementById(name + 'Slider');
+                const display = document.getElementById(name + 'Value');
+                slider.value = params[name];
+                display.textContent = name === 'time' ? (params[name] / 10).toFixed(1) + 's' :
+                    name.includes('rot') ? params[name] + '°' :
+                        Math.round(params[name]);
+                slider.addEventListener('input', () => {
+                    params[name] = parseFloat(slider.value);
+                    display.textContent = name === 'time' ? (params[name] / 10).toFixed(1) + 's' :
+                        name.includes('rot') ? params[name] + '°' :
+                            Math.round(params[name]);
+                    render();
+                });
+            });
+            animBtn.addEventListener('click', () => {
+                autoPlay = !autoPlay;
+                animBtn.textContent = autoPlay ? 'Pause' : 'Play';
+            });
+            resetBtn.addEventListener('click', () => {
+                controlPoints = Array(8).fill(null).map(() => []);
+                render();
+            });
 
-        // Step 3: Get the transformed and projected position of the clicked vertex
-        let clickedPoint = currentCube[clickedVertex];
-        let clickedTrans = transformPoint({...clickedPoint}, t);
-        let clickedScreen = project(clickedTrans);
-        
-        // Step 4: Calculate screen offset
-        let screenOffset = { 
-          x: mousePos.x - clickedScreen.x, 
-          y: mousePos.y - clickedScreen.y 
-        };
+            // Add event listeners for checkboxes to update display instantly
+            pathToggle.addEventListener('change', () => {
+                render();
+            });
+            controlToggle.addEventListener('change', () => {
+                render();
+            });
+            labelsToggle.addEventListener('change', () => {
+                render();
+            });
 
-        // Step 5: Transform the current center and apply screen offset to estimate new center
-        let transformedCenter = transformPoint({...currentCenter}, t);
-        let centerScreen = project(transformedCenter);
-        
-        // Estimate world offset from screen offset (using projection scale)
-        let scale = 800 / (800 + transformedCenter.z);
-        let worldOffsetInCameraSpace = {
-          x: screenOffset.x / scale,
-          y: screenOffset.y / scale,
-          z: 0
-        };
+            // 3D math
+            function rotateX(p, angle) {
+                const c = Math.cos(angle);
+                const s = Math.sin(angle);
+                return { x: p.x, y: p.y * c - p.z * s, z: p.y * s + p.z * c };
+            }
+            function rotateY(p, angle) {
+                const c = Math.cos(angle);
+                const s = Math.sin(angle);
+                return { x: p.x * c + p.z * s, y: p.y, z: -p.x * s + p.z * c };
+            }
+            function rotateZ(p, angle) {
+                const c = Math.cos(angle);
+                const s = Math.sin(angle);
+                return { x: p.x * c - p.y * s, y: p.x * s + p.y * c, z: p.z };
+            }
+            function project(p) {
+                const dist = 800;
+                const scale = dist / (dist + p.z);
+                return {
+                    x: (canvas.width / dpr) / 2 + p.x * scale,
+                    y: (canvas.height / dpr) / 2 + p.y * scale
+                };
+            }
+            function createCube(size) {
+                const h = size / 2;
+                return [
+                    { x: -h, y: -h, z: -h }, { x: h, y: -h, z: -h },
+                    { x: h, y: h, z: -h }, { x: -h, y: h, z: -h },
+                    { x: -h, y: -h, z: h }, { x: h, y: -h, z: h },
+                    { x: h, y: h, z: h }, { x: -h, y: h, z: h }
+                ];
+            }
+            function bezierPoint(points, t) {
+                if (points.length === 1) return points[0];
+                const newPoints = [];
+                for (let i = 0; i < points.length - 1; i++) {
+                    newPoints.push({
+                        x: points[i].x + (points[i + 1].x - points[i].x) * t,
+                        y: points[i].y + (points[i + 1].y - points[i].y) * t,
+                        z: points[i].z + (points[i + 1].z - points[i].z) * t
+                    });
+                }
+                return bezierPoint(newPoints, t);
+            }
+            function getVertexPath3D(vertexIndex, t) {
+                const startCube = createCube(params.pastSize);
+                const endCube = createCube(params.presentSize);
+                const start = startCube[vertexIndex];
+                const end = endCube[vertexIndex];
+                let ctrlPts = controlPoints[vertexIndex];
+                if (ctrlPts.length === 0) {
+                    return {
+                        x: start.x + (end.x - start.x) * t,
+                        y: start.y + (end.y - start.y) * t,
+                        z: start.z + (end.z - start.z) * t
+                    };
+                }
+                const points = [start, ...ctrlPts, end];
+                return bezierPoint(points, t);
+            }
+            function transformPoint(p, t) {
+                p = rotateX(p, params.rotX * t * Math.PI / 180);
+                p = rotateY(p, params.rotY * t * Math.PI / 180);
+                p = rotateZ(p, params.rotZ * t * Math.PI / 180);
+                p = rotateX(p, camRx);
+                p = rotateY(p, camRy);
+                p = rotateZ(p, camRz);
+                p.x += params.translateX * t;
+                p.y += params.translateY * t;
+                p.z += params.translateZ * t;
+                return p;
+            }
 
-        // Convert camera space offset back to world space (inverse camera transform)
-        let worldOffset = {...worldOffsetInCameraSpace};
-        worldOffset = rotateZ(worldOffset, -camRz);
-        worldOffset = rotateY(worldOffset, -camRy);
-        worldOffset = rotateX(worldOffset, -camRx);
+            // Helper function to adjust color brightness based on depth with glass/glow effect
+            function adjustColorForDepth(color, z) {
+                // Normalize z to a reasonable range (-400 to 400)
+                const normalizedZ = Math.max(-400, Math.min(400, z));
+                // Map z to brightness factor (closer = lighter, farther = darker)
+                const brightnessFactor = 1 + (normalizedZ / 400) * 0.4; // ±40% for more dramatic effect
+                const clampedFactor = Math.max(0.6, Math.min(1.4, brightnessFactor));
 
-        // Step 6: Create new control points that maintain cube geometry
-        for (let vi = 0; vi < 8; vi++) {
-          // Get the relative position of this vertex from the center
-          let relativePos = {
-            x: currentCube[vi].x - currentCenter.x,
-            y: currentCube[vi].y - currentCenter.y,
-            z: currentCube[vi].z - currentCenter.z
-          };
+                // Parse rgba color and adjust brightness
+                const match = color.match(/rgba?\((\d+),(\d+),(\d+),?([^)]*)\)/);
+                if (match) {
+                    const r = Math.min(255, Math.max(0, Math.round(parseInt(match[1]) * clampedFactor)));
+                    const g = Math.min(255, Math.max(0, Math.round(parseInt(match[2]) * clampedFactor)));
+                    const b = Math.min(255, Math.max(0, Math.round(parseInt(match[3]) * clampedFactor)));
+                    const a = match[4] ? match[4] : '0.7'; // Make slightly more transparent for glass effect
+                    return `rgba(${r},${g},${b},${a})`;
+                }
+                return color;
+            }
 
-          // Create new control point: old position + center offset (maintains cube shape)
-          let newControlPoint = {
-            x: currentCube[vi].x + worldOffset.x,
-            y: currentCube[vi].y + worldOffset.y,
-            z: currentCube[vi].z + worldOffset.z
-          };
+            // Draw axis labels and time indicators
+            function drawAxisLabels() {
+                if (!labelsToggle.checked) return;
+                
+                const t = params.time / 100;
+                ctx.save();
+                ctx.font = '14px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
 
-          // Insert the control point at the correct position in the bezier curve
-          let insertIndex = Math.floor(t * (controlPoints[vi].length + 1));
-          controlPoints[vi].splice(insertIndex, 0, {...newControlPoint});
-        }
-        
-        // Immediately start dragging the new point!
-        isDragging = true;
-        dragVertex = 0;
-        dragControlIndex = Math.floor(t * controlPoints[0].length);
-        render();
-      }
+                // Get the center of the present cube for reference
+                let presentCube = createCube(params.presentSize);
+                presentCube = presentCube.map(p => rotateX(p, params.rotX * Math.PI / 180));
+                presentCube = presentCube.map(p => rotateY(p, params.rotY * Math.PI / 180));
+                presentCube = presentCube.map(p => rotateZ(p, params.rotZ * Math.PI / 180));
+                presentCube = presentCube.map(p => rotateX(p, camRx));
+                presentCube = presentCube.map(p => rotateY(p, camRy));
+                presentCube = presentCube.map(p => rotateZ(p, camRz));
+                presentCube = presentCube.map(p => ({
+                    x: p.x + params.translateX,
+                    y: p.y + params.translateY,
+                    z: p.z + params.translateZ
+                }));
+                const presentProjected = presentCube.map(project);
 
-      canvas.addEventListener('mousedown', (e) => {
-        const mousePos = getMousePos(e);
-        const ctrl = findNearestControl(mousePos);
-        if (ctrl) {
-          isDragging = true;
-          dragVertex = ctrl.vertex;
-          dragControlIndex = ctrl.index;
-          dragOffset = {
-            x: ctrl.screen.x - mousePos.x,
-            y: ctrl.screen.y - mousePos.y
-          };
-        } else {
-          const pathHit = findNearestPath(mousePos);
-          if (pathHit) {
-            addControlPointsToAll(pathHit.vertex, pathHit.t, mousePos);
-          }
-        }
-      });
-      window.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        const mousePos = getMousePos(e);
-        if (dragControlIndex >= 0) {
-          const num = controlPoints[dragVertex].length;
-          const t = (dragControlIndex + 1) / (num + 1);
-          
-          // Target screen position where we want the control point to be
-          let targetScreenPos = {
-            x: mousePos.x + dragOffset.x,
-            y: mousePos.y + dragOffset.y
-          };
-          
-          // Get the reference control point (the one being dragged)
-          let referencePoint = {...controlPoints[dragVertex][dragControlIndex]};
-          let referenceTrans = transformPoint(referencePoint, t);
-          let referenceScreen = project(referenceTrans);
-          
-          // Calculate how much we need to move in screen space
-          let screenDelta = {
-            x: targetScreenPos.x - referenceScreen.x,
-            y: targetScreenPos.y - referenceScreen.y
-          };
-          
-          // Convert screen movement to world space
-          let scale = 800 / (800 + referenceTrans.z);
-          let worldDeltaInCameraSpace = {
-            x: screenDelta.x / scale,
-            y: screenDelta.y / scale,
-            z: 0
-          };
-          
-          // Convert camera space delta back to world space
-          let worldDelta = {...worldDeltaInCameraSpace};
-          worldDelta = rotateZ(worldDelta, -camRz);
-          worldDelta = rotateY(worldDelta, -camRy);
-          worldDelta = rotateX(worldDelta, -camRx);
-          
-          // Apply the same world space offset to all 8 control points
-          for (let vi = 0; vi < 8; vi++) {
-            controlPoints[vi][dragControlIndex].x += worldDelta.x;
-            controlPoints[vi][dragControlIndex].y += worldDelta.y;
-            controlPoints[vi][dragControlIndex].z += worldDelta.z;
-          }
-          
-          render();
-        }
-      });
-      window.addEventListener('mouseup', () => {
-        isDragging = false;
-        dragVertex = -1;
-        dragControlIndex = -1;
-      });
+                // Calculate cube center
+                let centerX = 0, centerY = 0;
+                presentProjected.forEach(p => {
+                    centerX += p.x;
+                    centerY += p.y;
+                });
+                centerX /= 8;
+                centerY /= 8;
 
-      function animate() {
-        if (autoPlay) {
-          params.time = (params.time + params.speed) % 100;
-          document.getElementById('timeSlider').value = params.time;
-          document.getElementById('timeValue').textContent = (params.time/10).toFixed(1) + 's';
-          render();
-        }
-        requestAnimationFrame(animate);
-      }
-      document.addEventListener('keydown', (e) => {
-        if (e.code === 'Space') {
-          e.preventDefault();
-          animBtn.click();
-        }
-      });
+                // Define axis directions based on cube edges - label ALL edges of each type
+                const axisLabels = [
+                    { label: 'LEFT-RIGHT', edges: [[0,1], [3,2], [4,5], [7,6]], color: '#ff6666' },
+                    { label: 'DOWN-UP', edges: [[0,3], [1,2], [4,7], [5,6]], color: '#66ff66' },
+                    { label: 'BACK-FRONT', edges: [[0,4], [1,5], [2,6], [3,7]], color: '#6666ff' }
+                ];
 
-      animate();
-      render();
-    });
-  </script>
+                // Draw axis labels on ALL edges of each type
+                axisLabels.forEach(axis => {
+                    axis.edges.forEach(edge => {
+                        const p1 = presentProjected[edge[0]];
+                        const p2 = presentProjected[edge[1]];
+                        const z1 = presentCube[edge[0]].z;
+                        const z2 = presentCube[edge[1]].z;
+                        const avgZ = (z1 + z2) / 2;
+                        
+                        // Only label edges that are reasonably visible (not too far back)
+                        if (avgZ > -200) {
+                            // Position label at the midpoint of the edge
+                            const midX = (p1.x + p2.x) / 2;
+                            const midY = (p1.y + p2.y) / 2;
+                            
+                            // Calculate edge direction
+                            const edgeX = p2.x - p1.x;
+                            const edgeY = p2.y - p1.y;
+                            const edgeLength = Math.sqrt(edgeX * edgeX + edgeY * edgeY);
+                            
+                            if (edgeLength > 10) { // Only label edges that are visible enough
+                                // Calculate perpendicular direction (outward from cube center)
+                                const toCenterX = centerX - midX;
+                                const toCenterY = centerY - midY;
+                                const toCenterLength = Math.sqrt(toCenterX * toCenterX + toCenterY * toCenterY);
+                                
+                                if (toCenterLength > 0) {
+                                    const outwardX = -toCenterX / toCenterLength;
+                                    const outwardY = -toCenterY / toCenterLength;
+                                    
+                                    // Position label outside the edge
+                                    const labelX = midX + outwardX * 20;
+                                    const labelY = midY + outwardY * 20;
+                                    
+                                    // Fade based on depth and visibility
+                                    const opacity = Math.max(0.3, Math.min(1.0, (avgZ + 400) / 800));
+                                    
+                                    ctx.save();
+                                    ctx.fillStyle = axis.color;
+                                    ctx.globalAlpha = opacity;
+                                    ctx.font = '10px sans-serif';
+                                    ctx.fillText(axis.label, labelX, labelY);
+                                    
+                                    // Draw small line from edge to label
+                                    ctx.strokeStyle = axis.color;
+                                    ctx.lineWidth = 1;
+                                    ctx.setLineDash([1, 1]);
+                                    ctx.beginPath();
+                                    ctx.moveTo(midX, midY);
+                                    ctx.lineTo(labelX - outwardX * 5, labelY - outwardY * 5);
+                                    ctx.stroke();
+                                    ctx.setLineDash([]);
+                                    ctx.restore();
+                                }
+                            }
+                        }
+                    });
+                });
+
+                // Draw TIME labels along ALL 8 paths - repeated text running through center
+                ctx.font = '9px sans-serif';
+                
+                for (let i = 0; i < 8; i++) {
+                    // Calculate visibility of this path
+                    let pathStartPoint = getVertexPath3D(i, 0.5);
+                    pathStartPoint = transformPoint(pathStartPoint, 0.5);
+                    const pathVisibility = Math.max(0.2, Math.min(1.0, (pathStartPoint.z + 400) / 800));
+                    
+                    // Create repeated TIME text that spans the entire path
+                    const repeatCount = 8; // Number of "TIME" repetitions
+                    const fullText = 'TIME '.repeat(repeatCount).trim();
+                    
+                    // Distribute letters evenly across the central 70% of the path
+                    const startT = 0.15;
+                    const endT = 0.85;
+                    const pathLength = endT - startT;
+                    
+                    for (let j = 0; j < fullText.length; j++) {
+                        if (fullText[j] === ' ') continue; // Skip spaces
+                        
+                        const letterT = startT + (j / (fullText.length - 1)) * pathLength;
+                        
+                        let p = getVertexPath3D(i, letterT);
+                        p = transformPoint(p, letterT);
+                        const projected = project(p);
+                        
+                        // Calculate path direction for letter rotation
+                        const deltaT = 0.01;
+                        let p1 = getVertexPath3D(i, Math.max(0, letterT - deltaT));
+                        p1 = transformPoint(p1, Math.max(0, letterT - deltaT));
+                        const proj1 = project(p1);
+                        
+                        let p2 = getVertexPath3D(i, Math.min(1, letterT + deltaT));
+                        p2 = transformPoint(p2, Math.min(1, letterT + deltaT));
+                        const proj2 = project(p2);
+                        
+                        let angle = Math.atan2(proj2.y - proj1.y, proj2.x - proj1.x);
+                        
+                        // Keep text readable - flip if upside down
+                        if (Math.abs(angle) > Math.PI / 2) {
+                            angle += Math.PI;
+                        }
+                        
+                        ctx.save();
+                        ctx.translate(projected.x, projected.y);
+                        ctx.rotate(angle);
+                        ctx.fillStyle = `rgba(255, 255, 0, ${pathVisibility * 0.8})`;
+                        ctx.fillText(fullText[j], 0, -2);
+                        ctx.restore();
+                    }
+                }
+                
+                ctx.restore();
+            }
+
+            // --- Mini-cube always a cube, always rigid! ---
+            function drawMinimap() {
+                // Only ever a perfect cube. All animation is rigid: follows center of bezier path but no scaling/deformation.
+                const t = params.time / 100;
+                const dist = 800;
+                const containerRect = miniContainer.getBoundingClientRect();
+                const centerX = containerRect.width / 2;
+                const centerY = containerRect.height / 2;
+                mctx.fillStyle = '#111';
+                mctx.fillRect(0, 0, containerRect.width, containerRect.height);
+
+                // Calculate the center position by getting the transformed vertex positions
+                let cubeCenter = { x: 0, y: 0, z: 0 };
+
+                // Get the center of the bezier paths in world space (already transformed)
+                for (let i = 0; i < 8; i++) {
+                    let vertexPath = getVertexPath3D(i, t);
+                    let transformedVertex = transformPoint({ ...vertexPath }, t);
+                    cubeCenter.x += transformedVertex.x;
+                    cubeCenter.y += transformedVertex.y;
+                    cubeCenter.z += transformedVertex.z;
+                }
+                cubeCenter.x /= 8;
+                cubeCenter.y /= 8;
+                cubeCenter.z /= 8;
+
+                // Create small cube and position it at the center with proper rotation
+                let cube = createCube(params.pastSize);
+                for (let i = 0; i < cube.length; i++) {
+                    let p = { ...cube[i] };
+                    // Apply the same object rotations as the main cube
+                    p = rotateX(p, params.rotX * t * Math.PI / 180);
+                    p = rotateY(p, params.rotY * t * Math.PI / 180);
+                    p = rotateZ(p, params.rotZ * t * Math.PI / 180);
+                    // Apply camera rotation
+                    p = rotateX(p, camRx);
+                    p = rotateY(p, camRy);
+                    p = rotateZ(p, camRz);
+                    // Move cube center to match the calculated center
+                    p.x += cubeCenter.x;
+                    p.y += cubeCenter.y;
+                    p.z += cubeCenter.z;
+                    cube[i] = p;
+                }
+                const projected = cube.map(v => {
+                    const scale = dist / (dist + v.z);
+                    return { x: centerX + v.x * scale, y: centerY + v.y * scale };
+                });
+                mctx.save();
+                faces.forEach((face, i) => {
+                    // Calculate average z-depth for this face
+                    let avgZ = 0;
+                    face.forEach(v => avgZ += cube[v].z);
+                    avgZ /= face.length;
+
+                    // Apply depth-based lighting
+                    const adjustedColor = adjustColorForDepth(faceColors[i], avgZ);
+                    mctx.fillStyle = adjustedColor;
+                    mctx.beginPath();
+                    face.forEach((v, j) => {
+                        const pt = projected[v];
+                        if (j === 0) mctx.moveTo(pt.x, pt.y);
+                        else mctx.lineTo(pt.x, pt.y);
+                    });
+                    mctx.closePath();
+                    mctx.fill();
+                });
+                mctx.strokeStyle = '#ffff00';
+                mctx.lineWidth = 2;
+                const edges = [
+                    [0, 1], [1, 2], [2, 3], [3, 0],
+                    [4, 5], [5, 6], [6, 7], [7, 4],
+                    [0, 4], [1, 5], [2, 6], [3, 7]
+                ];
+                edges.forEach(([a, b]) => {
+                    mctx.beginPath();
+                    mctx.moveTo(projected[a].x, projected[a].y);
+                    mctx.lineTo(projected[b].x, projected[b].y);
+                    mctx.stroke();
+                });
+                mctx.restore();
+            }
+
+            function drawPaths() {
+                if (!pathToggle.checked) return;
+                const segments = 100;
+                ctx.save();
+                ctx.globalAlpha = 0.6;
+                ctx.lineWidth = 1;
+                for (let i = 0; i < 8; i++) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = '#888';
+                    for (let j = 0; j <= segments; j++) {
+                        const t = j / segments;
+                        let p = getVertexPath3D(i, t);
+                        p = transformPoint(p, t);
+                        const projected = project(p);
+                        if (j === 0) ctx.moveTo(projected.x, projected.y);
+                        else ctx.lineTo(projected.x, projected.y);
+                    }
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+            function drawControlPoints() {
+                // Control points are now invisible but still functional
+                return;
+            }
+            function drawGhostCube() {
+                // Small ghost cube (past) - ALWAYS shows faces regardless of checkbox
+                let cube = createCube(params.pastSize);
+                cube = cube.map(p => rotateX(p, camRx));
+                cube = cube.map(p => rotateY(p, camRy));
+                cube = cube.map(p => rotateZ(p, camRz));
+                const projected = cube.map(project);
+                
+                ctx.save();
+                
+                // ALWAYS show faces for ghost cube
+                faces.forEach((face, i) => {
+                    // Calculate average z-depth for this face
+                    let avgZ = 0;
+                    face.forEach(v => avgZ += cube[v].z);
+                    avgZ /= face.length;
+
+                    // Apply depth-based lighting with glow effect
+                    const adjustedColor = adjustColorForDepth(faceColors[i], avgZ);
+                    
+                    // Add glow effect for glass-like appearance
+                    ctx.save();
+                    ctx.shadowColor = adjustedColor.replace(/,[\d.]+\)$/, ',0.6)');
+                    ctx.shadowBlur = 8 + (avgZ / 400) * 3;
+                    ctx.shadowOffsetX = 0;
+                    ctx.shadowOffsetY = 0;
+                    
+                    ctx.fillStyle = adjustedColor;
+                    ctx.beginPath();
+                    face.forEach((v, j) => {
+                        const pt = projected[v];
+                        if (j === 0) ctx.moveTo(pt.x, pt.y);
+                        else ctx.lineTo(pt.x, pt.y);
+                    });
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Add glass highlight
+                    const highlightColor = adjustedColor.replace(/rgba?\((\d+),(\d+),(\d+)/, 'rgba(255,255,255').replace(/,[\d.]+\)$/, ',0.2)');
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = highlightColor;
+                    ctx.beginPath();
+                    const topVertices = face.slice(0, 2);
+                    topVertices.forEach((v, j) => {
+                        const pt = projected[v];
+                        const offsetPt = { x: pt.x, y: pt.y - 1 };
+                        if (j === 0) ctx.moveTo(offsetPt.x, offsetPt.y);
+                        else ctx.lineTo(offsetPt.x, offsetPt.y);
+                    });
+                    ctx.lineTo(projected[face[1]].x, projected[face[1]].y);
+                    ctx.lineTo(projected[face[0]].x, projected[face[0]].y);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                });
+
+                // Draw edges
+                ctx.strokeStyle = '#00ffff';
+                ctx.lineWidth = 1.5;
+                const edges = [
+                    [0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6], [3, 7]
+                ];
+                edges.forEach(([a, b]) => {
+                    ctx.beginPath();
+                    ctx.moveTo(projected[a].x, projected[a].y);
+                    ctx.lineTo(projected[b].x, projected[b].y);
+                    ctx.stroke();
+                });
+                ctx.restore();
+            }
+
+            function drawBigCube() {
+                // Large present cube - faces controlled by checkbox
+                let cube = createCube(params.presentSize);
+                cube = cube.map(p => rotateX(p, params.rotX * Math.PI / 180));
+                cube = cube.map(p => rotateY(p, params.rotY * Math.PI / 180));
+                cube = cube.map(p => rotateZ(p, params.rotZ * Math.PI / 180));
+                cube = cube.map(p => rotateX(p, camRx));
+                cube = cube.map(p => rotateY(p, camRy));
+                cube = cube.map(p => rotateZ(p, camRz));
+                cube = cube.map(p => ({
+                    x: p.x + params.translateX,
+                    y: p.y + params.translateY,
+                    z: p.z + params.translateZ
+                }));
+                const projected = cube.map(project);
+                
+                ctx.save();
+
+                // Only show faces when controlToggle is unchecked (Hide big cube Faces)
+                if (!controlToggle.checked) {
+                    faces.forEach((face, i) => {
+                        // Calculate average z-depth for this face
+                        let avgZ = 0;
+                        face.forEach(v => avgZ += cube[v].z);
+                        avgZ /= face.length;
+
+                        // Apply depth-based lighting with glow effect
+                        const adjustedColor = adjustColorForDepth(faceColors[i], avgZ);
+                        
+                        // Add glow effect for glass-like appearance
+                        ctx.save();
+                        ctx.shadowColor = adjustedColor.replace(/,[\d.]+\)$/, ',0.8)');
+                        ctx.shadowBlur = 10 + (avgZ / 400) * 5;
+                        ctx.shadowOffsetX = 0;
+                        ctx.shadowOffsetY = 0;
+                        
+                        ctx.fillStyle = adjustedColor;
+                        ctx.beginPath();
+                        face.forEach((v, j) => {
+                            const pt = projected[v];
+                            if (j === 0) ctx.moveTo(pt.x, pt.y);
+                            else ctx.lineTo(pt.x, pt.y);
+                        });
+                        ctx.closePath();
+                        ctx.fill();
+                        
+                        // Add glass highlight
+                        const highlightColor = adjustedColor.replace(/rgba?\((\d+),(\d+),(\d+)/, 'rgba(255,255,255').replace(/,[\d.]+\)$/, ',0.3)');
+                        ctx.shadowBlur = 0;
+                        ctx.fillStyle = highlightColor;
+                        ctx.beginPath();
+                        const topVertices = face.slice(0, 2);
+                        topVertices.forEach((v, j) => {
+                            const pt = projected[v];
+                            const offsetPt = { x: pt.x, y: pt.y - 2 };
+                            if (j === 0) ctx.moveTo(offsetPt.x, offsetPt.y);
+                            else ctx.lineTo(offsetPt.x, offsetPt.y);
+                        });
+                        ctx.lineTo(projected[face[1]].x, projected[face[1]].y);
+                        ctx.lineTo(projected[face[0]].x, projected[face[0]].y);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.restore();
+                    });
+                }
+
+                // Draw edges
+                ctx.strokeStyle = '#ff00ff';
+                ctx.lineWidth = 1.5;
+                const edges = [
+                    [0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6], [3, 7]
+                ];
+                edges.forEach(([a, b]) => {
+                    ctx.beginPath();
+                    ctx.moveTo(projected[a].x, projected[a].y);
+                    ctx.lineTo(projected[b].x, projected[b].y);
+                    ctx.stroke();
+                });
+                ctx.restore();
+            }
+            function drawAnimatedCube() {
+                const t = params.time / 100;
+                let cube = [];
+                for (let i = 0; i < 8; i++) {
+                    let p = getVertexPath3D(i, t);
+                    p = transformPoint(p, t);
+                    cube.push(p);
+                }
+                const projected = cube.map(project);
+                ctx.save();
+                
+                // ALWAYS show faces for animated cube (independent of checkbox)
+                faces.forEach((face, i) => {
+                    // Calculate average z-depth for this face
+                    let avgZ = 0;
+                    face.forEach(v => avgZ += cube[v].z);
+                    avgZ /= face.length;
+
+                    // Apply depth-based lighting with glow effect
+                    const adjustedColor = adjustColorForDepth(faceColors[i], avgZ);
+                    
+                    // Add glow effect for glass-like appearance
+                    ctx.save();
+                    ctx.shadowColor = adjustedColor.replace(/,[\d.]+\)$/, ',0.8)'); // Glow color
+                    ctx.shadowBlur = 12 + (avgZ / 400) * 6; // Stronger glow for animated cube
+                    ctx.shadowOffsetX = 0;
+                    ctx.shadowOffsetY = 0;
+                    
+                    ctx.fillStyle = adjustedColor;
+                    ctx.beginPath();
+                    face.forEach((v, j) => {
+                        const pt = projected[v];
+                        if (j === 0) ctx.moveTo(pt.x, pt.y);
+                        else ctx.lineTo(pt.x, pt.y);
+                    });
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Add glass highlight
+                    const highlightColor = adjustedColor.replace(/rgba?\((\d+),(\d+),(\d+)/, 'rgba(255,255,255').replace(/,[\d.]+\)$/, ',0.4)');
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = highlightColor;
+                    ctx.beginPath();
+                    const topVertices = face.slice(0, 2);
+                    topVertices.forEach((v, j) => {
+                        const pt = projected[v];
+                        const offsetPt = { x: pt.x, y: pt.y - 3 }; // Larger offset for animated cube
+                        if (j === 0) ctx.moveTo(offsetPt.x, offsetPt.y);
+                        else ctx.lineTo(offsetPt.x, offsetPt.y);
+                    });
+                    ctx.lineTo(projected[face[1]].x, projected[face[1]].y);
+                    ctx.lineTo(projected[face[0]].x, projected[face[0]].y);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                });
+                
+                ctx.strokeStyle = '#ffff00';
+                ctx.lineWidth = 2;
+                const edges = [
+                    [0, 1], [1, 2], [2, 3], [3, 0],
+                    [4, 5], [5, 6], [6, 7], [7, 4],
+                    [0, 4], [1, 5], [2, 6], [3, 7]
+                ];
+                edges.forEach(([a, b]) => {
+                    ctx.beginPath();
+                    ctx.moveTo(projected[a].x, projected[a].y);
+                    ctx.lineTo(projected[b].x, projected[b].y);
+                    ctx.stroke();
+                });
+                ctx.restore();
+            }
+            function render() {
+                ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+                drawPaths();
+                drawGhostCube();
+                drawBigCube();
+                drawAnimatedCube();
+                drawControlPoints();
+                drawAxisLabels();
+                drawMinimap();
+            }
+
+            // --- Mouse interaction: add/drag ---
+            function getMousePos(e) {
+                const rect = canvas.getBoundingClientRect();
+                return {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+            }
+            function findNearestControl(mousePos) {
+                let nearest = null;
+                let minDist = 10000;
+                for (let vi = 0; vi < 8; vi++) {
+                    for (let ci = 0; ci < controlPoints[vi].length; ci++) {
+                        // Control points are stored in bezier space - only apply camera transformations for hit detection
+                        let p = { ...controlPoints[vi][ci] };
+
+                        // Apply only camera transformations
+                        p = rotateX(p, camRx);
+                        p = rotateY(p, camRy);
+                        p = rotateZ(p, camRz);
+
+                        const projected = project(p);
+                        const dx = projected.x - mousePos.x;
+                        const dy = projected.y - mousePos.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < 15 && dist < minDist) {
+                            minDist = dist;
+                            nearest = { vertex: vi, index: ci, screen: projected, data: p };
+                        }
+                    }
+                }
+                return nearest;
+            }
+            function findNearestPath(mousePos) {
+                const segments = 100;
+                let nearestDist = Infinity;
+                let nearestVertex = -1;
+                let nearestT = 0;
+                for (let i = 0; i < 8; i++) {
+                    for (let j = 0; j <= segments; j++) {
+                        const t = j / segments;
+                        let p = getVertexPath3D(i, t);
+                        p = transformPoint(p, t);
+                        const projected = project(p);
+                        const dist = Math.sqrt(
+                            (projected.x - mousePos.x) ** 2 +
+                            (projected.y - mousePos.y) ** 2
+                        );
+                        if (dist < nearestDist && dist < 15) {
+                            nearestDist = dist;
+                            nearestVertex = i;
+                            nearestT = t;
+                        }
+                    }
+                }
+                return nearestVertex >= 0 ? { vertex: nearestVertex, t: nearestT } : null;
+            }
+
+            // Insert a new control point at correct t and position for all vertices
+            function addControlPointsToAll(clickedVertex, t, mousePos) {
+                // Step 1: Get the current cube state at time t in raw bezier space (before any transformations)
+                let currentCube = [];
+                for (let i = 0; i < 8; i++) {
+                    currentCube[i] = getVertexPath3D(i, t);
+                }
+
+                // Step 2: Calculate current center in raw bezier space
+                let currentCenter = { x: 0, y: 0, z: 0 };
+                for (let i = 0; i < 8; i++) {
+                    currentCenter.x += currentCube[i].x;
+                    currentCenter.y += currentCube[i].y;
+                    currentCenter.z += currentCube[i].z;
+                }
+                currentCenter.x /= 8;
+                currentCenter.y /= 8;
+                currentCenter.z /= 8;
+
+                // Step 3: Get the transformed position of the clicked vertex for screen calculation
+                let clickedPoint = currentCube[clickedVertex];
+                let clickedTrans = transformPoint({ ...clickedPoint }, t);
+                let clickedScreen = project(clickedTrans);
+
+                // Step 4: Calculate screen offset from where user clicked
+                let screenOffset = {
+                    x: mousePos.x - clickedScreen.x,
+                    y: mousePos.y - clickedScreen.y
+                };
+
+                // Step 5: Convert screen offset back to bezier space (before object transformations)
+                let transformedCenter = transformPoint({ ...currentCenter }, t);
+                let scale = 800 / (800 + transformedCenter.z);
+                let worldOffsetInCameraSpace = {
+                    x: screenOffset.x / scale,
+                    y: screenOffset.y / scale,
+                    z: 0
+                };
+
+                // Convert camera space offset back to world space
+                let worldOffset = { ...worldOffsetInCameraSpace };
+                worldOffset = rotateZ(worldOffset, -camRz);
+                worldOffset = rotateY(worldOffset, -camRy);
+                worldOffset = rotateX(worldOffset, -camRx);
+
+                // Now we need to remove the object transformations from this offset to get it in bezier space
+                // Inverse object rotation transformations
+                let bezierOffset = { ...worldOffset };
+                bezierOffset = rotateZ(bezierOffset, -params.rotZ * t * Math.PI / 180);
+                bezierOffset = rotateY(bezierOffset, -params.rotY * t * Math.PI / 180);
+                bezierOffset = rotateX(bezierOffset, -params.rotX * t * Math.PI / 180);
+                // Remove translation (translation is applied after rotation in transformPoint)
+                bezierOffset.x -= params.translateX * t;
+                bezierOffset.y -= params.translateY * t;
+                bezierOffset.z -= params.translateZ * t;
+
+                // Step 6: Create new control points in bezier space that maintain cube geometry
+                for (let vi = 0; vi < 8; vi++) {
+                    // Create new control point: bezier position + bezier space offset
+                    let newControlPoint = {
+                        x: currentCube[vi].x + bezierOffset.x,
+                        y: currentCube[vi].y + bezierOffset.y,
+                        z: currentCube[vi].z + bezierOffset.z
+                    };
+
+                    // Insert the control point at the correct position in the bezier curve
+                    let insertIndex = Math.floor(t * (controlPoints[vi].length + 1));
+                    controlPoints[vi].splice(insertIndex, 0, { ...newControlPoint });
+                }
+
+                // Immediately start dragging the new point!
+                isDragging = true;
+                dragVertex = 0;
+                dragControlIndex = Math.floor(t * controlPoints[0].length);
+                render();
+            }
+
+            canvas.addEventListener('mousedown', (e) => {
+                if (isResizing) return; // Don't interfere with resize
+
+                const mousePos = getMousePos(e);
+                const ctrl = findNearestControl(mousePos);
+                if (ctrl) {
+                    isDragging = true;
+                    dragVertex = ctrl.vertex;
+                    dragControlIndex = ctrl.index;
+                    dragOffset = {
+                        x: ctrl.screen.x - mousePos.x,
+                        y: ctrl.screen.y - mousePos.y
+                    };
+                } else {
+                    const pathHit = findNearestPath(mousePos);
+                    if (pathHit) {
+                        addControlPointsToAll(pathHit.vertex, pathHit.t, mousePos);
+                    }
+                }
+            });
+            window.addEventListener('mousemove', (e) => {
+                if (isResizing) return; // Don't interfere with resize
+                if (!isDragging) return;
+                const mousePos = getMousePos(e);
+                if (dragControlIndex >= 0) {
+                    // Target screen position where we want the control point to be
+                    let targetScreenPos = {
+                        x: mousePos.x + dragOffset.x,
+                        y: mousePos.y + dragOffset.y
+                    };
+
+                    // Get the reference control point (stored in bezier space)
+                    let referencePoint = { ...controlPoints[dragVertex][dragControlIndex] };
+
+                    // Apply only camera transformations to get current screen position
+                    let referenceCam = rotateX({ ...referencePoint }, camRx);
+                    referenceCam = rotateY(referenceCam, camRy);
+                    referenceCam = rotateZ(referenceCam, camRz);
+                    let referenceScreen = project(referenceCam);
+
+                    // Calculate how much we need to move in screen space
+                    let screenDelta = {
+                        x: targetScreenPos.x - referenceScreen.x,
+                        y: targetScreenPos.y - referenceScreen.y
+                    };
+
+                    // Convert screen movement to bezier space (inverse camera transforms only)
+                    let scale = 800 / (800 + referenceCam.z);
+                    let worldDeltaInCameraSpace = {
+                        x: screenDelta.x / scale,
+                        y: screenDelta.y / scale,
+                        z: 0
+                    };
+
+                    // Convert camera space delta back to bezier space
+                    let bezierDelta = { ...worldDeltaInCameraSpace };
+                    bezierDelta = rotateZ(bezierDelta, -camRz);
+                    bezierDelta = rotateY(bezierDelta, -camRy);
+                    bezierDelta = rotateX(bezierDelta, -camRx);
+
+                    // Apply the bezier space offset to all 8 control points
+                    for (let vi = 0; vi < 8; vi++) {
+                        controlPoints[vi][dragControlIndex].x += bezierDelta.x;
+                        controlPoints[vi][dragControlIndex].y += bezierDelta.y;
+                        controlPoints[vi][dragControlIndex].z += bezierDelta.z;
+                    }
+
+                    render();
+                }
+            });
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+                dragVertex = -1;
+                dragControlIndex = -1;
+            });
+
+            function animate() {
+                if (autoPlay) {
+                    params.time = (params.time + params.speed) % 100;
+                    document.getElementById('timeSlider').value = params.time;
+                    document.getElementById('timeValue').textContent = (params.time / 10).toFixed(1) + 's';
+                    render();
+                }
+                requestAnimationFrame(animate);
+            }
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    animBtn.click();
+                }
+            });
+
+            animate();
+            render();
+        });
+    </script>
 </body>
+
 </html>
