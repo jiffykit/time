@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Hypercube Time Visualization</title>
+  <style>
+    body { margin:0; padding:0; background:#0a0a0a; overflow:hidden; color:#fff; font-family:sans-serif; }
+    .canvas-container { position:absolute; inset:0; }
+    canvas { display:block; }
+    .controls { position:fixed; top:10px; right:10px; width:340px; background:rgba(0,0,0,0.8); padding:12px; border-radius:8px; }
+    .control-group { margin-bottom:12px; }
+    .control-group h3 { margin:4px 0; font-size:14px; color:#0ff; }
+    .slider-label { display:flex; justify-content:space-between; font-size:12px; }
+    input[type=range], input[type=checkbox] { width:100%; margin-top:4px; }
+    #animateBtn { width:100%; padding:8px; margin-bottom:12px; background:#005500; color:#fff; border:none; border-radius:4px; cursor:pointer; }
+    #miniLabel { position:fixed; bottom:460px; left:10px; font-size:14px; }
+    #miniCanvas { position:fixed; bottom:30px; left:10px; background:#111; border:1px solid #444; width:420px; height:420px; }
+    #ticker { position:fixed; bottom:0; width:100%; background:rgba(20,20,20,0.9); overflow:hidden; height:48px; }
+    #ticker .text { display:inline-block; white-space:nowrap; padding-left:100%; animation:scroll 120s linear infinite; font-size:18px; line-height:48px; }
+    @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+  </style>
+</head>
+<body>
+  <div class="canvas-container">
+    <canvas id="canvas"></canvas>
+  </div>
+  <div class="controls">
+    <button id="animateBtn">Play</button>
+    <div class="control-group">
+      <label><input type="checkbox" id="pathToggle" checked> Show Paths</label>
+    </div>
+    <div class="control-group">
+      <h3>Time Progress</h3>
+      <div class="slider-label"><span>Time</span><span id="timeValue">0.0s</span></div>
+      <input id="timeSlider" type="range" min="0" max="100" value="0" step="1">
+    </div>
+    <div class="control-group">
+      <h3>Speed</h3>
+      <div class="slider-label"><span>Speed</span><span id="speedValue">1.0</span></div>
+      <input id="speedSlider" type="range" min="0.1" max="3" step="0.1" value="1">
+    </div>
+    <div class="control-group">
+      <h3>Rotation (°)</h3>
+      <div class="slider-label"><span>X</span><span id="rotXValue">0°</span></div>
+      <input id="rotXSlider" type="range" min="0" max="720" value="0" step="1">
+      <div class="slider-label"><span>Y</span><span id="rotYValue">0°</span></div>
+      <input id="rotYSlider" type="range" min="0" max="720" value="0" step="1">
+      <div class="slider-label"><span>Z</span><span id="rotZValue">0°</span></div>
+      <input id="rotZSlider" type="range" min="0" max="720" value="0" step="1">
+    </div>
+    <div class="control-group">
+      <h3>Cube Sizes</h3>
+      <div class="slider-label"><span>Small Cube</span><span id="pastSizeValue">30</span></div>
+      <input id="pastSizeSlider" type="range" min="10" max="100" value="30">
+      <div class="slider-label"><span>Large Cube</span><span id="presentSizeValue">400</span></div>
+      <input id="presentSizeSlider" type="range" min="30" max="500" value="400">
+    </div>
+    <div class="control-group">
+      <h3>Translation</h3>
+      <div class="slider-label"><span>X</span><span id="translateXValue">0</span></div>
+      <input id="translateXSlider" type="range" min="-500" max="500" value="0">
+      <div class="slider-label"><span>Y</span><span id="translateYValue">0</span></div>
+      <input id="translateYSlider" type="range" min="-500" max="500" value="0">
+      <div class="slider-label"><span>Z</span><span id="translateZValue">0</span></div>
+      <input id="translateZSlider" type="range" min="-500" max="500" value="0">
+    </div>
+  </div>
+  <div id="miniLabel">Actual Path</div>
+  <canvas id="miniCanvas" width="420" height="420"></canvas>
+  <div id="ticker">
+    <div class="text">Time Tesseract uses uniform scaling across X, Y, and Z to encode time: a static cube yields straight, expanding lines; rotations and translations bend those lines into graceful, non-intersecting curves and spirals, tracing true 4D worldlines. Scrub the scale slider or hit play to watch each corner’s ribbon-like “worldtube” grow; slice mode freezes the cube at any moment. A single, strictly increasing scale parameter guarantees no crossings, preserving clarity. Controls include slider, play/pause, scale limits, visibility toggles, and color/opacity for age. It’s an intuitive, compact way to explore untangled 4D histories.</div>
+  </div>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
+      const mini = document.getElementById('miniCanvas'), mctx = mini.getContext('2d');
+      const pathToggle = document.getElementById('pathToggle');
+      const animBtn = document.getElementById('animateBtn');
+      const dpr = window.devicePixelRatio || 1;
+      const params = { time:0, speed:1, rotX:0, rotY:0, rotZ:0, pastSize:30, presentSize:400, translateX:0, translateY:0, translateZ:0 };
+      const names = ['time','speed','rotX','rotY','rotZ','pastSize','presentSize','translateX','translateY','translateZ'];
+      function resizeAll() {
+        canvas.width = window.innerWidth * dpr;
+        canvas.height = window.innerHeight * dpr;
+        ctx.scale(dpr, dpr);
+        mini.width = 420 * dpr;
+        mini.height = 420 * dpr;
+        mctx.scale(dpr, dpr);
+      }
+      resizeAll(); window.addEventListener('resize', resizeAll);
+      const camRx = 30 * Math.PI/180, camRy = 30 * Math.PI/180, camRz = 0;
+      names.forEach(n => {
+        const s = document.getElementById(n+'Slider'), d = document.getElementById(n+'Value');
+        if (s && d) {
+          s.value = params[n];
+          s.addEventListener('input', () => {
+            params[n] = parseFloat(s.value);
+            d.textContent = n==='time'? (params[n]/10).toFixed(1)+'s' : Math.round(params[n]);
+            render();
+          });
+        }
+      });
+      let autoPlay = false;
+      animBtn.addEventListener('click', () => { autoPlay = !autoPlay; animBtn.textContent = autoPlay?'Pause':'Play'; });
+      function rotateX(p,a){const c=Math.cos(a),s=Math.sin(a);return{x:p.x,y:p.y*c-p.z*s,z:p.y*s+p.z*c}};
+      function rotateY(p,a){const c=Math.cos(a),s=Math.sin(a);return{x:p.x*c+p.z*s,y:p.y,z:-p.x*s+p.z*c}};
+      function rotateZ(p,a){const c=Math.cos(a),s=Math.sin(a);return{x:p.x*c-p.y*s,y:p.x*s+p.y*c,z:p.z}};
+      function project(p){const dist=800, s=dist/(dist+p.z);return{x:(canvas.width/dpr)/2+p.x*s,y:(canvas.height/dpr)/2+p.y*s}};
+      function createCube(sz){const h=sz/2;return[
+        {x:-h,y:-h,z:-h},{x:h,y:-h,z:-h},{x:h,y:h,z:-h},{x:-h,y:h,z:-h},
+        {x:-h,y:-h,z:h},{x:h,y:-h,z:h},{x:h,y:h,z:h},{x:-h,y:h,z:h}
+      ];}
+      const faces = [[0,1,2,3],[4,5,6,7],[0,1,5,4],[3,2,6,7],[1,2,6,5],[0,3,7,4]];
+      const faceColors = ['rgba(255,255,0,0.2)','rgba(255,255,0,0.2)','rgba(255,0,255,0.2)','rgba(255,0,255,0.2)','rgba(0,255,255,0.2)','rgba(0,255,255,0.2)'];
+      function drawTraces(){
+        const seg = 100;
+        ctx.save(); ctx.globalAlpha = 0.6; ctx.lineWidth = 1;
+        for(let i=0;i<8;i++){
+          ctx.beginPath();
+          for(let j=0;j<=seg;j++){
+            const u = j/seg;
+            const b = createCube(params.pastSize)[i];
+            const t = createCube(params.presentSize)[i];
+            let p = { x: b.x+(t.x-b.x)*u, y: b.y+(t.y-b.y)*u, z: b.z+(t.z-b.z)*u };
+            p = rotateX(p, params.rotX*u*Math.PI/180);
+            p = rotateY(p, params.rotY*u*Math.PI/180);
+            p = rotateZ(p, params.rotZ*u*Math.PI/180);
+            p = rotateX(p, camRx);
+            p = rotateY(p, camRy);
+            p = rotateZ(p, camRz);
+            p.x += params.translateX*u;
+            p.y += params.translateY*u;
+            p.z += params.translateZ*u;
+            const pr = project(p);
+            j? ctx.lineTo(pr.x,pr.y) : ctx.moveTo(pr.x,pr.y);
+          }
+          ctx.strokeStyle = '#888';
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      function drawStatic(){
+        [['#00ffff',params.pastSize,false], ['#ff00ff',params.presentSize,true]].forEach(([col,sz,move])=>{
+          let cube = createCube(sz);
+          if(move){ cube = cube.map(p=>rotateX(p,params.rotX*Math.PI/180)).map(p=>rotateY(p,params.rotY*Math.PI/180)).map(p=>rotateZ(p,params.rotZ*Math.PI/180)); }
+          cube = cube.map(p=>rotateX(p,camRx)).map(p=>rotateY(p,camRy)).map(p=>rotateZ(p,camRz));
+          if(move){ cube = cube.map(p=>({x:p.x+params.translateX,y:p.y+params.translateY,z:p.z+params.translateZ})); }
+          const pr = cube.map(project);
+          ctx.save();
+          faces.forEach((face,i)=>{
+            ctx.fillStyle = faceColors[i];
+            ctx.beginPath(); face.forEach((v,j)=>{const P=pr[v];j?ctx.lineTo(P.x,P.y):ctx.moveTo(P.x,P.y)});
+            ctx.closePath(); ctx.fill();
+          });
+          ctx.strokeStyle = col; ctx.lineWidth=1.5;
+          [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]].forEach(e=>{
+            ctx.beginPath(); ctx.moveTo(pr[e[0]].x,pr[e[0]].y); ctx.lineTo(pr[e[1]].x,pr[e[1]].y); ctx.stroke();
+          });
+          ctx.restore();
+        });
+      }
+      function drawGhost(){
+        const t = params.time/100;
+        let cube = createCube(params.pastSize + (params.presentSize-params.pastSize)*t);
+        cube = cube.map(p=>rotateX(p,params.rotX*t*Math.PI/180)).map(p=>rotateY(p,params.rotY*t*Math.PI/180)).map(p=>rotateZ(p,params.rotZ*t*Math.PI/180));
+        cube = cube.map(p=>rotateX(p,camRx)).map(p=>rotateY(p,camRy)).map(p=>rotateZ(p,camRz));
+        cube = cube.map(p=>({x:p.x+params.translateX*t,y:p.y+params.translateY*t,z:p.z+params.translateZ*t}));
+        const pr = cube.map(project);
+        ctx.save();
+        faces.forEach((face,i)=>{
+          ctx.fillStyle = faceColors[i];
+          ctx.beginPath(); face.forEach((v,j)=>{const P=pr[v];j?ctx.lineTo(P.x,P.y):ctx.moveTo(P.x,P.y)});
+          ctx.closePath(); ctx.fill();
+        });
+        ctx.strokeStyle='#ffff00'; ctx.lineWidth=2;
+        [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]].forEach(e=>{
+          ctx.beginPath(); ctx.moveTo(pr[e[0]].x,pr[e[0]].y); ctx.lineTo(pr[e[1]].x,pr[e[1]].y); ctx.stroke();
+        });
+        ctx.restore();
+      }
+      function drawMini(){
+        const t = params.time/100;
+        // background
+        mctx.fillStyle = '#111'; mctx.fillRect(0,0,420,420);
+        let cube = createCube(params.pastSize);
+        cube = cube.map(p=>rotateX(p,params.rotX*t*Math.PI/180)).map(p=>rotateY(p,params.rotY*t*Math.PI/180)).map(p=>rotateZ(p,params.rotZ*t*Math.PI/180));
+        cube = cube.map(p=>rotateX(p,camRx)).map(p=>rotateY(p,camRy)).map(p=>rotateZ(p,camRz));
+        cube = cube.map(p=>({x:p.x+params.translateX*t,y:p.y+params.translateY*t,z:p.z+params.translateZ*t}));
+        const mid=210, dist=800;
+        const pr = cube.map(v=>{const s=dist/(dist+v.z);return{x:mid+v.x*s,y:mid+v.y*s}});
+        mctx.save();
+        faces.forEach((face,i)=>{
+          mctx.fillStyle = faceColors[i];
+          mctx.beginPath(); face.forEach((v,j)=>{const P=pr[v];j?mctx.lineTo(P.x,P.y):mctx.moveTo(P.x,P.y)});
+          mctx.closePath(); mctx.fill();
+        });
+        mctx.strokeStyle='#ffff00'; mctx.lineWidth=2;
+        [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]].forEach(e=>{
+          mctx.beginPath(); mctx.moveTo(pr[e[0]].x,pr[e[0]].y); mctx.lineTo(pr[e[1]].x,pr[e[1]].y); mctx.stroke();
+        });
+        mctx.restore();
+      }
+      function render(){
+        ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr);
+        if(pathToggle.checked) drawTraces();
+        drawStatic(); drawGhost(); drawMini();
+      }
+      (function anim(){if(autoPlay){params.time=(params.time+params.speed)%100;document.getElementById('timeSlider').value=params.time;render();}requestAnimationFrame(anim);})();
+      document.addEventListener('keydown',e=>{if(e.code==='Space')animBtn.click();});
+      render();
+    });
+  </script>
+</body>
+</html>
