@@ -18,18 +18,14 @@
     #miniCanvas { position:fixed; bottom:30px; left:10px; background:#111; border:1px solid #444; width:420px; height:420px; }
     #ticker { position:fixed; bottom:0; width:100%; background:rgba(20,20,20,0.9); overflow:hidden; height:48px; }
     #ticker .text { display:inline-block; white-space:nowrap; padding-left:100%; animation:scroll 120s linear infinite; font-size:18px; line-height:48px; }
-    @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+    @keyframes scroll { 0% { transform:translateX(0); } 100% { transform:translateX(-100%); } }
   </style>
 </head>
 <body>
-  <div class="canvas-container">
-    <canvas id="canvas"></canvas>
-  </div>
+  <div class="canvas-container"><canvas id="canvas"></canvas></div>
   <div class="controls">
     <button id="animateBtn">Play</button>
-    <div class="control-group">
-      <label><input type="checkbox" id="pathToggle" checked> Show Paths</label>
-    </div>
+    <div class="control-group"><label><input type="checkbox" id="pathToggle" checked> Show Paths</label></div>
     <div class="control-group">
       <h3>Time Progress</h3>
       <div class="slider-label"><span>Time</span><span id="timeValue">0.0s</span></div>
@@ -38,7 +34,7 @@
     <div class="control-group">
       <h3>Speed</h3>
       <div class="slider-label"><span>Speed</span><span id="speedValue">1.0</span></div>
-      <input id="speedSlider" type="range" min="0.1" max="3" step="0.1" value="1">
+      <input id="speedSlider" type="range" min="0.1" max="1" step="0.1" value="1">
     </div>
     <div class="control-group">
       <h3>Rotation (°)</h3>
@@ -68,19 +64,24 @@
   </div>
   <div id="miniLabel">Actual Path</div>
   <canvas id="miniCanvas" width="420" height="420"></canvas>
-  <div id="ticker">
-    <div class="text">Time Tesseract uses uniform scaling across X, Y, and Z to encode time: a static cube yields straight, expanding lines; rotations and translations bend those lines into graceful, non-intersecting curves and spirals, tracing true 4D worldlines. Scrub the scale slider or hit play to watch each corner’s ribbon-like “worldtube” grow; slice mode freezes the cube at any moment. A single, strictly increasing scale parameter guarantees no crossings, preserving clarity. Controls include slider, play/pause, scale limits, visibility toggles, and color/opacity for age. It’s an intuitive, compact way to explore untangled 4D histories.</div>
-  </div>
+  <div id="ticker"><div class="text">When the simulation starts, the cube sits still—only time changes via expanding equally outward. Rotate or move it, and the paths bend into curves and spirals but never tangle—showing a perfect 4D time map of each corner!</div></div>
   <script>
     window.addEventListener('DOMContentLoaded', () => {
       const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
       const mini = document.getElementById('miniCanvas'), mctx = mini.getContext('2d');
       const pathToggle = document.getElementById('pathToggle');
       const animBtn = document.getElementById('animateBtn');
+      let autoPlay = false;
       const dpr = window.devicePixelRatio || 1;
       const params = { time:0, speed:1, rotX:0, rotY:0, rotZ:0, pastSize:30, presentSize:400, translateX:0, translateY:0, translateZ:0 };
-      const names = ['time','speed','rotX','rotY','rotZ','pastSize','presentSize','translateX','translateY','translateZ'];
-      function resizeAll() {
+      const faces = [[0,1,2,3],[4,5,6,7],[0,1,5,4],[3,2,6,7],[1,2,6,5],[0,3,7,4]];
+      // Pure CMY faces at 40% opacity
+      const faceColors = [
+        'rgba(255,255,0,0.4)','rgba(255,255,0,0.4)',  // Yellow
+        'rgba(255,0,255,0.4)','rgba(255,0,255,0.4)',  // Magenta
+        'rgba(0,255,255,0.4)','rgba(0,255,255,0.4)'   // Cyan
+      ];
+      function resizeAll(){
         canvas.width = window.innerWidth * dpr;
         canvas.height = window.innerHeight * dpr;
         ctx.scale(dpr, dpr);
@@ -90,18 +91,11 @@
       }
       resizeAll(); window.addEventListener('resize', resizeAll);
       const camRx = 30 * Math.PI/180, camRy = 30 * Math.PI/180, camRz = 0;
-      names.forEach(n => {
+      ['time','speed','rotX','rotY','rotZ','pastSize','presentSize','translateX','translateY','translateZ'].forEach(n => {
         const s = document.getElementById(n+'Slider'), d = document.getElementById(n+'Value');
-        if (s && d) {
-          s.value = params[n];
-          s.addEventListener('input', () => {
-            params[n] = parseFloat(s.value);
-            d.textContent = n==='time'? (params[n]/10).toFixed(1)+'s' : Math.round(params[n]);
-            render();
-          });
-        }
+        s.value = params[n];
+        s.addEventListener('input', () => { params[n] = parseFloat(s.value); d.textContent = n==='time'? (params[n]/10).toFixed(1)+'s' : Math.round(params[n]); render(); });
       });
-      let autoPlay = false;
       animBtn.addEventListener('click', () => { autoPlay = !autoPlay; animBtn.textContent = autoPlay?'Pause':'Play'; });
       function rotateX(p,a){const c=Math.cos(a),s=Math.sin(a);return{x:p.x,y:p.y*c-p.z*s,z:p.y*s+p.z*c}};
       function rotateY(p,a){const c=Math.cos(a),s=Math.sin(a);return{x:p.x*c+p.z*s,y:p.y,z:-p.x*s+p.z*c}};
@@ -111,102 +105,12 @@
         {x:-h,y:-h,z:-h},{x:h,y:-h,z:-h},{x:h,y:h,z:-h},{x:-h,y:h,z:-h},
         {x:-h,y:-h,z:h},{x:h,y:-h,z:h},{x:h,y:h,z:h},{x:-h,y:h,z:h}
       ];}
-      const faces = [[0,1,2,3],[4,5,6,7],[0,1,5,4],[3,2,6,7],[1,2,6,5],[0,3,7,4]];
-      const faceColors = ['rgba(255,255,0,0.2)','rgba(255,255,0,0.2)','rgba(255,0,255,0.2)','rgba(255,0,255,0.2)','rgba(0,255,255,0.2)','rgba(0,255,255,0.2)'];
-      function drawTraces(){
-        const seg = 100;
-        ctx.save(); ctx.globalAlpha = 0.6; ctx.lineWidth = 1;
-        for(let i=0;i<8;i++){
-          ctx.beginPath();
-          for(let j=0;j<=seg;j++){
-            const u = j/seg;
-            const b = createCube(params.pastSize)[i];
-            const t = createCube(params.presentSize)[i];
-            let p = { x: b.x+(t.x-b.x)*u, y: b.y+(t.y-b.y)*u, z: b.z+(t.z-b.z)*u };
-            p = rotateX(p, params.rotX*u*Math.PI/180);
-            p = rotateY(p, params.rotY*u*Math.PI/180);
-            p = rotateZ(p, params.rotZ*u*Math.PI/180);
-            p = rotateX(p, camRx);
-            p = rotateY(p, camRy);
-            p = rotateZ(p, camRz);
-            p.x += params.translateX*u;
-            p.y += params.translateY*u;
-            p.z += params.translateZ*u;
-            const pr = project(p);
-            j? ctx.lineTo(pr.x,pr.y) : ctx.moveTo(pr.x,pr.y);
-          }
-          ctx.strokeStyle = '#888';
-          ctx.stroke();
-        }
-        ctx.restore();
-      }
-      function drawStatic(){
-        [['#00ffff',params.pastSize,false], ['#ff00ff',params.presentSize,true]].forEach(([col,sz,move])=>{
-          let cube = createCube(sz);
-          if(move){ cube = cube.map(p=>rotateX(p,params.rotX*Math.PI/180)).map(p=>rotateY(p,params.rotY*Math.PI/180)).map(p=>rotateZ(p,params.rotZ*Math.PI/180)); }
-          cube = cube.map(p=>rotateX(p,camRx)).map(p=>rotateY(p,camRy)).map(p=>rotateZ(p,camRz));
-          if(move){ cube = cube.map(p=>({x:p.x+params.translateX,y:p.y+params.translateY,z:p.z+params.translateZ})); }
-          const pr = cube.map(project);
-          ctx.save();
-          faces.forEach((face,i)=>{
-            ctx.fillStyle = faceColors[i];
-            ctx.beginPath(); face.forEach((v,j)=>{const P=pr[v];j?ctx.lineTo(P.x,P.y):ctx.moveTo(P.x,P.y)});
-            ctx.closePath(); ctx.fill();
-          });
-          ctx.strokeStyle = col; ctx.lineWidth=1.5;
-          [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]].forEach(e=>{
-            ctx.beginPath(); ctx.moveTo(pr[e[0]].x,pr[e[0]].y); ctx.lineTo(pr[e[1]].x,pr[e[1]].y); ctx.stroke();
-          });
-          ctx.restore();
-        });
-      }
-      function drawGhost(){
-        const t = params.time/100;
-        let cube = createCube(params.pastSize + (params.presentSize-params.pastSize)*t);
-        cube = cube.map(p=>rotateX(p,params.rotX*t*Math.PI/180)).map(p=>rotateY(p,params.rotY*t*Math.PI/180)).map(p=>rotateZ(p,params.rotZ*t*Math.PI/180));
-        cube = cube.map(p=>rotateX(p,camRx)).map(p=>rotateY(p,camRy)).map(p=>rotateZ(p,camRz));
-        cube = cube.map(p=>({x:p.x+params.translateX*t,y:p.y+params.translateY*t,z:p.z+params.translateZ*t}));
-        const pr = cube.map(project);
-        ctx.save();
-        faces.forEach((face,i)=>{
-          ctx.fillStyle = faceColors[i];
-          ctx.beginPath(); face.forEach((v,j)=>{const P=pr[v];j?ctx.lineTo(P.x,P.y):ctx.moveTo(P.x,P.y)});
-          ctx.closePath(); ctx.fill();
-        });
-        ctx.strokeStyle='#ffff00'; ctx.lineWidth=2;
-        [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]].forEach(e=>{
-          ctx.beginPath(); ctx.moveTo(pr[e[0]].x,pr[e[0]].y); ctx.lineTo(pr[e[1]].x,pr[e[1]].y); ctx.stroke();
-        });
-        ctx.restore();
-      }
-      function drawMini(){
-        const t = params.time/100;
-        // background
-        mctx.fillStyle = '#111'; mctx.fillRect(0,0,420,420);
-        let cube = createCube(params.pastSize);
-        cube = cube.map(p=>rotateX(p,params.rotX*t*Math.PI/180)).map(p=>rotateY(p,params.rotY*t*Math.PI/180)).map(p=>rotateZ(p,params.rotZ*t*Math.PI/180));
-        cube = cube.map(p=>rotateX(p,camRx)).map(p=>rotateY(p,camRy)).map(p=>rotateZ(p,camRz));
-        cube = cube.map(p=>({x:p.x+params.translateX*t,y:p.y+params.translateY*t,z:p.z+params.translateZ*t}));
-        const mid=210, dist=800;
-        const pr = cube.map(v=>{const s=dist/(dist+v.z);return{x:mid+v.x*s,y:mid+v.y*s}});
-        mctx.save();
-        faces.forEach((face,i)=>{
-          mctx.fillStyle = faceColors[i];
-          mctx.beginPath(); face.forEach((v,j)=>{const P=pr[v];j?mctx.lineTo(P.x,P.y):mctx.moveTo(P.x,P.y)});
-          mctx.closePath(); mctx.fill();
-        });
-        mctx.strokeStyle='#ffff00'; mctx.lineWidth=2;
-        [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]].forEach(e=>{
-          mctx.beginPath(); mctx.moveTo(pr[e[0]].x,pr[e[0]].y); mctx.lineTo(pr[e[1]].x,pr[e[1]].y); mctx.stroke();
-        });
-        mctx.restore();
-      }
-      function render(){
-        ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr);
-        if(pathToggle.checked) drawTraces();
-        drawStatic(); drawGhost(); drawMini();
-      }
-      (function anim(){if(autoPlay){params.time=(params.time+params.speed)%100;document.getElementById('timeSlider').value=params.time;render();}requestAnimationFrame(anim);})();
+      function drawTraces(){const seg=100;ctx.save();ctx.globalAlpha=0.6;ctx.lineWidth=1;for(let i=0;i<8;i++){ctx.beginPath();for(let j=0;j<=seg;j++){const u=j/seg;const b=createCube(params.pastSize)[i];const t=createCube(params.presentSize)[i];let p={x:b.x+(t.x-b.x)*u,y:b.y+(t.y-b.y)*u,z:b.z+(t.z-b.z)*u};p=rotateX(p,params.rotX*u*Math.PI/180);p=rotateY(p,params.rotY*u*Math.PI/180);p=rotateZ(p,params.rotZ*u*Math.PI/180);p=rotateX(p,camRx);p=rotateY(p,camRy);p=rotateZ(p,camRz);p.x+=params.translateX*u;p.y+=params.translateY*u;p.z+=params.translateZ*u;const pr=project(p);j?ctx.lineTo(pr.x,pr.y):ctx.moveTo(pr.x,pr.y);}ctx.strokeStyle='#888';ctx.stroke();}ctx.restore();}
+      function drawStatic(){[['#00ffff',params.pastSize,false],['#ff00ff',params.presentSize,true]].forEach(([col,sz,move])=>{let cube=createCube(sz);if(move){cube=cube.map(p=>rotateX(p,params.rotX*Math.PI/180)).map(p=>rotateY(p,params.rotY*Math.PI/180)).map(p=>rotateZ(p,params.rotZ*Math.PI/180));}cube=cube.map(p=>rotateX(p,camRx)).map(p=>rotateY(p,camRy)).map(p=>rotateZ(p,camRz));if(move){cube=cube.map(p=>({x:p.x+params.translateX,y:p.y+params.translateY,z:p.z+params.translateZ}));}const pr=cube.map(project);ctx.save();faces.forEach((face,i)=>{ctx.fillStyle=faceColors[i];ctx.beginPath();face.forEach((v,j)=>{const P=pr[v];j?ctx.lineTo(P.x,P.y):ctx.moveTo(P.x,P.y)});ctx.closePath();ctx.fill();});ctx.strokeStyle=col;ctx.lineWidth=1.5;[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]].forEach(e=>{ctx.beginPath();ctx.moveTo(pr[e[0]].x,pr[e[0]].y);ctx.lineTo(pr[e[1]].x,pr[e[1]].y);ctx.stroke();});ctx.restore();});}
+      function drawGhost(){const t=params.time/100;let cube=createCube(params.pastSize+(params.presentSize-params.pastSize)*t);cube=cube.map(p=>rotateX(p,params.rotX*t*Math.PI/180)).map(p=>rotateY(p,params.rotY*t*Math.PI/180)).map(p=>rotateZ(p,params.rotZ*t*Math.PI/180));cube=cube.map(p=>rotateX(p,camRx)).map(p=>rotateY(p,camRy)).map(p=>rotateZ(p,camRz));cube=cube.map(p=>({x:p.x+params.translateX*t,y:p.y+params.translateY*t,z:p.z+params.translateZ*t}));const pr=cube.map(project);ctx.save();faces.forEach((face,i)=>{ctx.fillStyle=faceColors[i];ctx.beginPath();face.forEach((v,j)=>{const P=pr[v];j?ctx.lineTo(P.x,P.y):ctx.moveTo(P.x,P.y)});ctx.closePath();ctx.fill();});ctx.strokeStyle='#ffff00';ctx.lineWidth=2;[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]].forEach(e=>{ctx.beginPath();ctx.moveTo(pr[e[0]].x,pr[e[0]].y);ctx.lineTo(pr[e[1]].x,pr[e[1]].y);ctx.stroke();});ctx.restore();}
+      function drawMini(){const t=params.time/100;const dist=800, mid=210;mctx.fillStyle='#111';mctx.fillRect(0,0,420,420);let cube=createCube(params.pastSize).map(p=>rotateX(p,params.rotX*t*Math.PI/180)).map(p=>rotateY(p,params.rotY*t*Math.PI/180)).map(p=>rotateZ(p,params.rotZ*t*Math.PI/180)).map(p=>rotateX(p,camRx)).map(p=>rotateY(p,camRy)).map(p=>rotateZ(p,camRz)).map(p=>({x:p.x+params.translateX*t,y:p.y+params.translateY*t,z:p.z+params.translateZ*t}));const pr=cube.map(v=>{const s=dist/(dist+v.z);return{x:mid+v.x*s,y:mid+v.y*s}});mctx.save();faces.forEach((face,i)=>{mctx.fillStyle=faceColors[i];mctx.beginPath();face.forEach((v,j)=>{const P=pr[v];j?mctx.lineTo(P.x,P.y):mctx.moveTo(P.x,P.y)});mctx.closePath();mctx.fill();});mctx.strokeStyle='#ffff00';mctx.lineWidth=2;[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]].forEach(e=>{mctx.beginPath();mctx.moveTo(pr[e[0]].x,pr[e[0]].y);mctx.lineTo(pr[e[1]].x,pr[e[1]].y);mctx.stroke();});mctx.restore();}
+      function render(){ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr);if(pathToggle.checked) drawTraces();drawStatic();drawGhost();drawMini();}
+      (function anim(){if(autoPlay){params.time=(params.time+params.speed)%100;document.getElementById('timeSlider').value=params.time;document.getElementById('timeValue').textContent=(params.time/10).toFixed(1)+'s';render();}requestAnimationFrame(anim);})();
       document.addEventListener('keydown',e=>{if(e.code==='Space')animBtn.click();});
       render();
     });
